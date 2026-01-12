@@ -2,222 +2,293 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Magnet & Shift Edition</title>
+    <title>Ultimate Starship Defender - Kaptan Mikail</title>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
-        #ui { position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.8); padding: 15px; border: 2px solid #00ffcc; border-radius: 5px; pointer-events: none; }
-        .controls { font-size: 12px; color: #fff; margin-top: 10px; border-top: 1px solid #00ffcc; padding-top: 5px; }
+        
+        /* Giriş Ekranı Tasarımı */
+        #startScreen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: flex-start;
+            padding-left: 10%; z-index: 10;
+        }
+
+        #startButton {
+            padding: 20px 40px;
+            font-size: 24px;
+            background: transparent;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: 0.3s;
+            margin-bottom: 20px;
+        }
+
+        #startButton:hover {
+            background: #00ffcc;
+            color: #000;
+            box-shadow: 0 0 20px #00ffcc;
+        }
+
+        .score-info {
+            font-size: 20px;
+            margin: 5px 0;
+            color: #fff;
+            text-shadow: 0 0 5px #00ffcc;
+        }
+
+        /* Oyun İçi UI */
+        #gameUI {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 40, 40, 0.8); padding: 15px;
+            border: 2px solid #00ffcc; border-radius: 5px;
+            display: none; pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div style="font-size: 18px; font-weight: bold;">KAPTAN MİKAİL - COMMAND CENTER</div>
-    <div>Skor: <span id="skor">0</span></div>
-    <div>Zırh: %<span id="zirh">100</span></div>
-    <div>Lazer Şarj: %<span id="lazerSarj">0</span></div>
-    <div class="controls">
-        W: İleri Git | S: Geri Git | A-D: Dönüş<br>
-        SHIFT: Hızlı Git | BOŞLUK: Ateş | F: Lazer
+    <div id="startScreen">
+        <button id="startButton">YENİ OYUNA BAŞLA</button>
+        <div class="score-info">EN İYİ SKOR: <span id="highScoreText">0</span></div>
+        <div class="score-info">EN SON SKOR: <span id="lastScoreText">0</span></div>
     </div>
-</div>
 
-<canvas id="game"></canvas>
+    <div id="gameUI">
+        <div style="font-weight: bold;">KAPTAN MİKAİL</div>
+        <div>Skor: <span id="skor">0</span></div>
+        <div>Zırh: %<span id="zirh">100</span></div>
+        <div>Lazer: %<span id="lazerSarj">0</span></div>
+    </div>
 
-<script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    <canvas id="game"></canvas>
 
-let skor = 0;
-let zirh = 100;
-let lazerSarj = 0;
-const keys = {};
-let mermiler = [];
-let dusmanlar = [];
-let puanlar = []; // Takip eden puanlar
-
-window.addEventListener('keydown', e => keys[e.code] = true);
-window.addEventListener('keyup', e => keys[e.code] = false);
-
-const gemi = {
-    x: canvas.width / 2,
-    y: canvas.height / 2,
-    aci: 0,
-    normalHiz: 4,
-    turboHiz: 8,
-    donusHizi: 0.08,
-    
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.aci);
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
         
-        // Gemi Tasarımı
-        ctx.beginPath();
-        ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15);
-        ctx.closePath();
-        ctx.fillStyle = '#00ffcc';
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        // Motor ateşi efekti
-        if (keys['KeyW']) {
-            ctx.beginPath();
-            ctx.moveTo(-12, 0);
-            ctx.lineTo(-25, 0);
-            ctx.strokeStyle = keys['ShiftLeft'] ? '#00ffff' : '#ffaa00';
-            ctx.lineWidth = keys['ShiftLeft'] ? 4 : 2;
-            ctx.stroke();
-        }
-        ctx.restore();
-    },
+        // Hafızadan Skorları Çekme
+        let highScore = localStorage.getItem('highScore') || 0;
+        let lastScore = localStorage.getItem('lastScore') || 0;
+        document.getElementById('highScoreText').innerText = highScore;
+        document.getElementById('lastScoreText').innerText = lastScore;
 
-    update() {
-        // Dönüş
-        if (keys['KeyA']) this.aci -= this.donusHizi;
-        if (keys['KeyD']) this.aci += this.donusHizi;
-        
-        // Hareket Mantığı (W'ya basınca gider, basmayınca durur)
-        let mevcutHiz = 0;
-        if (keys['KeyW']) {
-            mevcutHiz = keys['ShiftLeft'] || keys['ShiftRight'] ? this.turboHiz : this.normalHiz;
-        } else if (keys['KeyS']) {
-            mevcutHiz = -this.normalHiz;
-        }
+        let gameActive = false;
+        let skor = 0;
+        let zirh = 100;
+        let lazerSarj = 0;
+        const keys = {};
+        let mermiler = [];
+        let dusmanlar = [];
+        let puanlar = [];
 
-        this.x += Math.cos(this.aci) * mevcutHiz;
-        this.y += Math.sin(this.aci) * mevcutHiz;
+        // Giriş Ekranı Animasyon Değişkeni
+        let animStep = 0;
 
-        // Ekran Sınırları
-        const p = 25;
-        if (this.x < p) this.x = p;
-        if (this.x > canvas.width - p) this.x = canvas.width - p;
-        if (this.y < p) this.y = p;
-        if (this.y > canvas.height - p) this.y = canvas.height - p;
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // Ateş etme
-        if (keys['Space'] && !this.ateslendi) {
-            this.fire('normal');
-            this.ateslendi = true;
-            setTimeout(() => this.ateslendi = false, 200);
-        }
-        if (keys['KeyF'] && lazerSarj >= 100) { this.fire('lazer'); lazerSarj = 0; }
-        if (lazerSarj < 100) lazerSarj += 0.15;
-        document.getElementById('lazerSarj').innerText = Math.floor(lazerSarj);
-    },
-
-    fire(type) {
-        mermiler.push({
-            x: this.x + Math.cos(this.aci) * 20,
-            y: this.y + Math.sin(this.aci) * 20,
-            vx: Math.cos(this.aci) * (type === 'lazer' ? 22 : 14),
-            vy: Math.sin(this.aci) * (type === 'lazer' ? 22 : 14),
-            type: type
-        });
-    }
-};
-
-function spawnEnemy() {
-    if(dusmanlar.length < 15) {
-        dusmanlar.push({
-            x: Math.random() > 0.5 ? -50 : canvas.width + 50,
-            y: Math.random() * canvas.height,
-            size: 25, hiz: 1.5 + (skor/10000)
-        });
-    }
-}
-
-function update() {
-    gemi.update();
-
-    mermiler.forEach((m, mi) => {
-        m.x += m.vx; m.y += m.vy;
-        if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
-    });
-
-    dusmanlar.forEach((d, di) => {
-        const dx = gemi.x - d.x;
-        const dy = gemi.y - d.y;
-        const dist = Math.hypot(dx, dy);
-        d.x += (dx / dist) * d.hiz;
-        d.y += (dy / dist) * d.hiz;
-
-        if(dist < d.size + 15) {
-            zirh -= 0.2;
-            document.getElementById('zirh').innerText = Math.floor(zirh);
-            if(zirh <= 0) location.reload();
-        }
-
-        mermiler.forEach((m, mi) => {
-            if(Math.hypot(m.x - d.x, m.y - d.y) < d.size) {
-                // Düşman ölünce puan topu bırakır
-                puanlar.push({ x: d.x, y: d.y, size: 6 });
-                dusmanlar.splice(di, 1);
-                if(m.type !== 'lazer') mermiler.splice(mi, 1);
+        const gemi = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            aci: 0,
+            normalHiz: 5,
+            turboHiz: 9,
+            donusHizi: 0.08,
+            
+            draw(scale = 1) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.aci);
+                ctx.scale(scale, scale);
+                
+                ctx.beginPath();
+                ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15);
+                ctx.closePath();
+                ctx.fillStyle = '#00ffcc';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                if (gameActive && keys['KeyW']) {
+                    ctx.beginPath();
+                    ctx.moveTo(-12, 0); ctx.lineTo(-25, 0);
+                    ctx.strokeStyle = keys['ShiftLeft'] ? '#0ff' : '#fa0';
+                    ctx.stroke();
+                }
+                ctx.restore();
             }
-        });
-    });
+        };
 
-    // MIKNATISLI PUAN SİSTEMİ
-    puanlar.forEach((p, pi) => {
-        const dx = gemi.x - p.x;
-        const dy = gemi.y - p.y;
-        const dist = Math.hypot(dx, dy);
-
-        // Belirli bir mesafeye gelince çekilmeye başlar
-        if(dist < 300) {
-            p.x += (dx / dist) * 8;
-            p.y += (dy / dist) * 8;
+        function startNewGame() {
+            gameActive = true;
+            skor = 0;
+            zirh = 100;
+            lazerSarj = 0;
+            dusmanlar = [];
+            mermiler = [];
+            puanlar = [];
+            gemi.x = canvas.width / 2;
+            gemi.y = canvas.height / 2;
+            startScreen.style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
         }
 
-        // Puan toplama
-        if(dist < 30) {
-            skor += 100;
-            document.getElementById('skor').innerText = skor;
-            puanlar.splice(pi, 1);
+        function gameOver() {
+            gameActive = false;
+            lastScore = skor;
+            if(skor > highScore) highScore = skor;
+            
+            // Hafızaya Kaydet
+            localStorage.setItem('highScore', highScore);
+            localStorage.setItem('lastScore', lastScore);
+            
+            document.getElementById('highScoreText').innerText = highScore;
+            document.getElementById('lastScoreText').innerText = lastScore;
+            
+            document.getElementById('gameUI').style.display = 'none';
+            startScreen.style.display = 'flex';
         }
-    });
-}
 
-function draw() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    gemi.draw();
-    
-    mermiler.forEach(m => {
-        ctx.fillStyle = m.type === 'lazer' ? '#0ff' : '#ff0';
-        ctx.beginPath(); ctx.arc(m.x, m.y, m.type === 'lazer' ? 6 : 3, 0, Math.PI*2); ctx.fill();
-    });
+        startButton.addEventListener('click', startNewGame);
 
-    dusmanlar.forEach(d => {
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(d.x, d.y, d.size, 0, Math.PI*2); ctx.stroke();
-    });
+        function update() {
+            if (!gameActive) return;
 
-    // Puanların çizimi (Yeşil parlayan toplar)
-    puanlar.forEach(p => {
-        ctx.fillStyle = '#0f0';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#0f0';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-    });
-}
+            // Hareket
+            if (keys['KeyA']) gemi.aci -= gemi.donusHizi;
+            if (keys['KeyD']) gemi.aci += gemi.donusHizi;
+            
+            let hiz = 0;
+            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
+            else if (keys['KeyS']) hiz = -gemi.normalHiz;
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-setInterval(spawnEnemy, 1200);
-loop();
+            gemi.x += Math.cos(gemi.aci) * hiz;
+            gemi.y += Math.sin(gemi.aci) * hiz;
 
-window.onresize = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-};
-</script>
+            // Sınırlar
+            gemi.x = Math.max(25, Math.min(canvas.width - 25, gemi.x));
+            gemi.y = Math.max(25, Math.min(canvas.height - 25, gemi.y));
+
+            // Ateş
+            if (keys['Space'] && !gemi.ateslendi) {
+                fire('normal');
+                gemi.ateslendi = true;
+                setTimeout(() => gemi.ateslendi = false, 200);
+            }
+            if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
+            if (lazerSarj < 100) lazerSarj += 0.2;
+            document.getElementById('lazerSarj').innerText = Math.floor(lazerSarj);
+
+            // Düşmanlar, Mermiler ve Mıknatıs Mantığı
+            mermiler.forEach((m, mi) => {
+                m.x += m.vx; m.y += m.vy;
+                if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
+            });
+
+            dusmanlar.forEach((d, di) => {
+                let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
+                d.x += (gemi.x - d.x) / dist * (1.5 + skor/10000);
+                d.y += (gemi.y - d.y) / dist * (1.5 + skor/10000);
+
+                if(dist < 40) {
+                    zirh -= 0.5;
+                    document.getElementById('zirh').innerText = Math.floor(zirh);
+                    if(zirh <= 0) gameOver();
+                }
+
+                mermiler.forEach((m, mi) => {
+                    if(Math.hypot(m.x - d.x, m.y - d.y) < 25) {
+                        puanlar.push({x: d.x, y: d.y});
+                        dusmanlar.splice(di, 1);
+                        if(m.type !== 'lazer') mermiler.splice(mi, 1);
+                    }
+                });
+            });
+
+            puanlar.forEach((p, pi) => {
+                let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
+                if(d < 300) {
+                    p.x += (gemi.x - p.x) / d * 10;
+                    p.y += (gemi.y - p.y) / d * 10;
+                }
+                if(d < 30) {
+                    skor += 100;
+                    document.getElementById('skor').innerText = skor;
+                    puanlar.splice(pi, 1);
+                }
+            });
+        }
+
+        function fire(type) {
+            mermiler.push({
+                x: gemi.x, y: gemi.y,
+                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 20 : 12),
+                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 20 : 12),
+                type: type
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameActive) {
+                gemi.draw();
+                mermiler.forEach(m => {
+                    ctx.fillStyle = m.type === 'lazer' ? '#0ff' : '#ff0';
+                    ctx.beginPath(); ctx.arc(m.x, m.y, 4, 0, Math.PI*2); ctx.fill();
+                });
+                dusmanlar.forEach(d => {
+                    ctx.strokeStyle = '#f44'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(d.x, d.y, 20, 0, Math.PI*2); ctx.stroke();
+                });
+                puanlar.forEach(p => {
+                    ctx.fillStyle = '#0f0'; ctx.shadowBlur = 10; ctx.shadowColor = '#0f0';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+            } else {
+                // Giriş Ekranı Karakter Animasyonu
+                animStep += 0.05;
+                let dynamicScale = 3 + Math.sin(animStep) * 0.3; // 3 kat boyut + pürüzsüz büyüme/küçülme
+                ctx.save();
+                ctx.translate(canvas.width * 0.2, canvas.height * 0.3); // Sol üst-orta kısım
+                gemi.x = 0; gemi.y = 0;
+                gemi.aci += 0.01;
+                gemi.draw(dynamicScale);
+                ctx.restore();
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        setInterval(() => { if(gameActive) spawnEnemy(); }, 1200);
+        function spawnEnemy() {
+            if(dusmanlar.length < 15) {
+                let x = Math.random() > 0.5 ? -50 : canvas.width + 50;
+                let y = Math.random() * canvas.height;
+                dusmanlar.push({x, y});
+            }
+        }
+
+        loop();
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    </script>
 </body>
 </html>
