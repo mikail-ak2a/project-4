@@ -2,29 +2,24 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender</title>
+    <title>Ultimate Starship Defender - Magnet & Shift Edition</title>
     <style>
         body { margin: 0; background: #050505; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
-        #ui { position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.8); padding: 15px; border: 2px solid #00ffcc; border-radius: 5px; }
+        #ui { position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.8); padding: 15px; border: 2px solid #00ffcc; border-radius: 5px; pointer-events: none; }
         .controls { font-size: 12px; color: #fff; margin-top: 10px; border-top: 1px solid #00ffcc; padding-top: 5px; }
-        .powerup-display { font-size: 14px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div id="ui">
-    <div style="font-size: 18px; font-weight: bold;">KAPTAN MİKAİL</div>
+    <div style="font-size: 18px; font-weight: bold;">KAPTAN MİKAİL - COMMAND CENTER</div>
     <div>Skor: <span id="skor">0</span></div>
     <div>Zırh: %<span id="zirh">100</span></div>
-    <div>Kalkan: <span id="kalkanDurumu">Hazır</span></div>
     <div>Lazer Şarj: %<span id="lazerSarj">0</span></div>
-    <div class="powerup-display">
-        Hız: <span id="hizSeviye">1</span> | Atış Hızı: <span id="atesHiziSeviye">1</span>
-    </div>
     <div class="controls">
-        W: İleri | S: Geri | A-D: Dönüş<br>
-        BOŞLUK: Normal Ateş | E: Kalkan | F: Lazer Ateşi
+        W: İleri Git | S: Geri Git | A-D: Dönüş<br>
+        SHIFT: Hızlı Git | BOŞLUK: Ateş | F: Lazer
     </div>
 </div>
 
@@ -38,19 +33,12 @@ canvas.height = window.innerHeight;
 
 let skor = 0;
 let zirh = 100;
-let kalkanAktif = false;
-let kalkanSuresi = 0;
-let lazerSarj = 0; // %0-100 arası
+let lazerSarj = 0;
 const keys = {};
 let mermiler = [];
 let dusmanlar = [];
-let guclendiriciler = [];
+let puanlar = []; // Takip eden puanlar
 
-// Güçlendirme seviyeleri
-let hizSeviye = 1; // Maks 3
-let atesHiziSeviye = 1; // Maks 3 (daha hızlı atış)
-
-// Klavye takibi
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
 
@@ -58,140 +46,89 @@ const gemi = {
     x: canvas.width / 2,
     y: canvas.height / 2,
     aci: 0,
-    hiz: 0,
-    donusHizi: 0.07,
-    ivme: 0.2,
-    surtunme: 0.98,
-    ateslendi: false,
-    lazerKullanildi: false,
-    kalkanKullanildi: false, // Kalkanın bekleme süresi için
+    normalHiz: 4,
+    turboHiz: 8,
+    donusHizi: 0.08,
+    
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.aci);
         
-        // Kalkan görseli
-        if(kalkanAktif) {
-            ctx.beginPath();
-            ctx.arc(0, 0, 30, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(0, 255, 204, ${0.5 + Math.sin(Date.now() * 0.01) * 0.2})`;
-            ctx.lineWidth = 5;
-            ctx.stroke();
-        }
-
-        // Gemi Çizimi
+        // Gemi Tasarımı
         ctx.beginPath();
-        ctx.moveTo(20, 0); 
-        ctx.lineTo(-15, 15); 
-        ctx.lineTo(-10, 0);  
-        ctx.lineTo(-15, -15); 
+        ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15);
         ctx.closePath();
-        
         ctx.fillStyle = '#00ffcc';
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
         ctx.stroke();
-        
-        // Motor ateşi (W'ya basınca)
-        if(keys['KeyW']) {
+
+        // Motor ateşi efekti
+        if (keys['KeyW']) {
             ctx.beginPath();
             ctx.moveTo(-12, 0);
-            ctx.lineTo(-25, Math.random() * 10 - 5);
-            ctx.strokeStyle = '#ffaa00';
+            ctx.lineTo(-25, 0);
+            ctx.strokeStyle = keys['ShiftLeft'] ? '#00ffff' : '#ffaa00';
+            ctx.lineWidth = keys['ShiftLeft'] ? 4 : 2;
             ctx.stroke();
         }
         ctx.restore();
     },
-    update() {
-        // Hız kontrolü
-        this.donusHizi = 0.07 * hizSeviye;
-        this.ivme = 0.2 * hizSeviye;
 
+    update() {
+        // Dönüş
         if (keys['KeyA']) this.aci -= this.donusHizi;
         if (keys['KeyD']) this.aci += this.donusHizi;
-        if (keys['KeyW']) {
-            this.hiz += this.ivme;
-        } else if (keys['KeyS']) {
-            this.hiz -= this.ivme;
-        }
         
-        this.hiz *= this.surtunme;
-        this.x += Math.cos(this.aci) * this.hiz;
-        this.y += Math.sin(this.aci) * this.hiz;
+        // Hareket Mantığı (W'ya basınca gider, basmayınca durur)
+        let mevcutHiz = 0;
+        if (keys['KeyW']) {
+            mevcutHiz = keys['ShiftLeft'] || keys['ShiftRight'] ? this.turboHiz : this.normalHiz;
+        } else if (keys['KeyS']) {
+            mevcutHiz = -this.normalHiz;
+        }
 
-        // Ekran sınırları
-        if (this.x < 0) this.x = canvas.width;
-        if (this.x > canvas.width) this.x = 0;
-        if (this.y < 0) this.y = canvas.height;
-        if (this.y > canvas.height) this.y = 0;
+        this.x += Math.cos(this.aci) * mevcutHiz;
+        this.y += Math.sin(this.aci) * mevcutHiz;
 
-        // Normal Ateş etme (Space)
-        const atesGecikmesi = 200 / atesHiziSeviye; // Atış hızı seviyesine göre gecikme
+        // Ekran Sınırları
+        const p = 25;
+        if (this.x < p) this.x = p;
+        if (this.x > canvas.width - p) this.x = canvas.width - p;
+        if (this.y < p) this.y = p;
+        if (this.y > canvas.height - p) this.y = canvas.height - p;
+
+        // Ateş etme
         if (keys['Space'] && !this.ateslendi) {
-            mermiler.push({
-                x: this.x + Math.cos(this.aci) * 20,
-                y: this.y + Math.sin(this.aci) * 20,
-                vx: Math.cos(this.aci) * 12,
-                vy: Math.sin(this.aci) * 12,
-                type: 'normal'
-            });
+            this.fire('normal');
             this.ateslendi = true;
-            setTimeout(() => this.ateslendi = false, atesGecikmesi);
+            setTimeout(() => this.ateslendi = false, 200);
         }
-
-        // Kalkan Aktivasyonu (E tuşu)
-        if (keys['KeyE'] && !kalkanAktif && !this.kalkanKullanildi) {
-            kalkanAktif = true;
-            this.kalkanKullanildi = true;
-            document.getElementById('kalkanDurumu').innerText = 'AKTİF!';
-            kalkanSuresi = 3 * 60; // 3 saniye
-            setTimeout(() => {
-                kalkanAktif = false;
-                document.getElementById('kalkanDurumu').innerText = 'Beklemede...';
-                setTimeout(() => { // Kalkan bekleme süresi
-                    this.kalkanKullanildi = false;
-                    document.getElementById('kalkanDurumu').innerText = 'Hazır';
-                }, 5000); // 5 saniye bekleme
-            }, 3000);
-        }
-
-        // Lazer Ateşi (F tuşu)
-        if (keys['KeyF'] && lazerSarj >= 100 && !this.lazerKullanildi) {
-            mermiler.push({
-                x: this.x + Math.cos(this.aci) * 20,
-                y: this.y + Math.sin(this.aci) * 20,
-                vx: Math.cos(this.aci) * 25, // Lazer daha hızlı
-                vy: Math.sin(this.aci) * 25,
-                type: 'lazer',
-                guc: 3 // Lazer 3 düşmanı birden yok eder
-            });
-            lazerSarj = 0;
-            this.lazerKullanildi = true;
-            setTimeout(() => this.lazerKullanildi = false, 500); // Lazer atış gecikmesi
-        }
-        // Lazer Şarjı
-        if (lazerSarj < 100) lazerSarj += 0.05; // Yavaşça şarj olur
+        if (keys['KeyF'] && lazerSarj >= 100) { this.fire('lazer'); lazerSarj = 0; }
+        if (lazerSarj < 100) lazerSarj += 0.15;
         document.getElementById('lazerSarj').innerText = Math.floor(lazerSarj);
+    },
+
+    fire(type) {
+        mermiler.push({
+            x: this.x + Math.cos(this.aci) * 20,
+            y: this.y + Math.sin(this.aci) * 20,
+            vx: Math.cos(this.aci) * (type === 'lazer' ? 22 : 14),
+            vy: Math.sin(this.aci) * (type === 'lazer' ? 22 : 14),
+            type: type
+        });
     }
 };
 
-function dusmanEkle() {
-    if(dusmanlar.length < 10 + skor/1000) { // Skor arttıkça daha çok düşman
+function spawnEnemy() {
+    if(dusmanlar.length < 15) {
         dusmanlar.push({
-            x: Math.random() * canvas.width,
+            x: Math.random() > 0.5 ? -50 : canvas.width + 50,
             y: Math.random() * canvas.height,
-            size: 20 + Math.random() * 20,
-            hp: 2,
-            hiz: 1 + Math.random() * 1.5 // Daha hızlı düşmanlar
+            size: 25, hiz: 1.5 + (skor/10000)
         });
     }
-}
-
-function guclendiriciEkle(x, y) {
-    const turler = ['hiz', 'ateshizi', 'zirh'];
-    const rastgeleTur = turler[Math.floor(Math.random() * turler.length)];
-    guclendiriciler.push({ x, y, type: rastgeleTur, size: 10 });
 }
 
 function update() {
@@ -200,110 +137,87 @@ function update() {
     mermiler.forEach((m, mi) => {
         m.x += m.vx; m.y += m.vy;
         if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
-        
-        if (m.type === 'lazer' && m.guc > 0) { // Lazerin birden fazla düşmanı vurma mantığı
-            dusmanlar.forEach((d, di) => {
-                if (Math.hypot(m.x - d.x, m.y - d.y) < d.size) {
-                    skor += 100;
-                    document.getElementById('skor').innerText = skor;
-                    guclendiriciEkle(d.x, d.y); // Düşmandan güçlendirici düşebilir
-                    dusmanlar.splice(di, 1);
-                    m.guc--; // Lazerin gücü azalır
-                    if (m.guc <= 0) mermiler.splice(mi, 1);
-                }
-            });
-        }
     });
 
     dusmanlar.forEach((d, di) => {
         const dx = gemi.x - d.x;
         const dy = gemi.y - d.y;
         const dist = Math.hypot(dx, dy);
-        
-        d.x += dx / dist * d.hiz;
-        d.y += dy / dist * d.hiz;
+        d.x += (dx / dist) * d.hiz;
+        d.y += (dy / dist) * d.hiz;
 
-        // Çarpışma (Gemi-Düşman)
-        if(dist < 20 + d.size) { // Gemi boyutu + düşman boyutu
-            if(!kalkanAktif) {
-                zirh -= 0.1;
-                document.getElementById('zirh').innerText = Math.floor(zirh);
-                if(zirh <= 0) location.reload();
-            } else {
-                // Kalkan varken düşman geri sekme
-                d.x -= dx / dist * 5;
-                d.y -= dy / dist * 5;
-            }
+        if(dist < d.size + 15) {
+            zirh -= 0.2;
+            document.getElementById('zirh').innerText = Math.floor(zirh);
+            if(zirh <= 0) location.reload();
         }
 
-        // Vurulma (Mermi-Düşman)
         mermiler.forEach((m, mi) => {
-            if(m.type === 'normal' && Math.hypot(m.x - d.x, m.y - d.y) < d.size) {
-                skor += 100;
-                document.getElementById('skor').innerText = skor;
-                guclendiriciEkle(d.x, d.y); // Düşmandan güçlendirici düşebilir
+            if(Math.hypot(m.x - d.x, m.y - d.y) < d.size) {
+                // Düşman ölünce puan topu bırakır
+                puanlar.push({ x: d.x, y: d.y, size: 6 });
                 dusmanlar.splice(di, 1);
-                mermiler.splice(mi, 1);
+                if(m.type !== 'lazer') mermiler.splice(mi, 1);
             }
         });
     });
 
-    // Güçlendiricileri güncelle
-    guclendiriciler.forEach((g, gi) => {
-        const dist = Math.hypot(gemi.x - g.x, gemi.y - g.y);
-        if(dist < 30) { // Güçlendiriciyi topla
-            if(g.type === 'hiz' && hizSeviye < 3) hizSeviye++;
-            else if(g.type === 'ateshizi' && atesHiziSeviye < 3) atesHiziSeviye++;
-            else if(g.type === 'zirh' && zirh < 100) zirh = Math.min(100, zirh + 20); // Zırhı %20 doldur
-            
-            document.getElementById('hizSeviye').innerText = hizSeviye;
-            document.getElementById('atesHiziSeviye').innerText = atesHiziSeviye;
-            document.getElementById('zirh').innerText = Math.floor(zirh);
+    // MIKNATISLI PUAN SİSTEMİ
+    puanlar.forEach((p, pi) => {
+        const dx = gemi.x - p.x;
+        const dy = gemi.y - p.y;
+        const dist = Math.hypot(dx, dy);
 
-            guclendiriciler.splice(gi, 1);
+        // Belirli bir mesafeye gelince çekilmeye başlar
+        if(dist < 300) {
+            p.x += (dx / dist) * 8;
+            p.y += (dy / dist) * 8;
+        }
+
+        // Puan toplama
+        if(dist < 30) {
+            skor += 100;
+            document.getElementById('skor').innerText = skor;
+            puanlar.splice(pi, 1);
         }
     });
 }
 
 function draw() {
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    
     gemi.draw();
     
     mermiler.forEach(m => {
-        ctx.fillStyle = (m.type === 'lazer') ? '#ff00ee' : '#ff0'; // Lazer mor renk
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, (m.type === 'lazer') ? 6 : 4, 0, Math.PI*2);
-        ctx.fill();
+        ctx.fillStyle = m.type === 'lazer' ? '#0ff' : '#ff0';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.type === 'lazer' ? 6 : 3, 0, Math.PI*2); ctx.fill();
     });
 
     dusmanlar.forEach(d => {
         ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(d.x, d.y, d.size, 0, Math.PI*2);
-        ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.size, 0, Math.PI*2); ctx.stroke();
     });
 
-    guclendiriciler.forEach(g => {
-        ctx.fillStyle = '#00ffff';
-        ctx.beginPath();
-        ctx.arc(g.x, g.y, g.size, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
+    // Puanların çizimi (Yeşil parlayan toplar)
+    puanlar.forEach(p => {
+        ctx.fillStyle = '#0f0';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#0f0';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
     });
 }
 
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-setInterval(dusmanEkle, 2000); // Düşman çıkış sıklığı
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+setInterval(spawnEnemy, 1200);
 loop();
+
+window.onresize = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+};
 </script>
 </body>
 </html>
