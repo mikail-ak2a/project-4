@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Liquid Sphere Edition</title>
+    <title>Ultimate Starship Defender - Fixed Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -80,46 +80,43 @@
             y: canvas.height / 2,
             aci: 0,
             yariCap: 22,
+            normalHiz: 4, // Eski hız seviyesine çekildi
+            turboHiz: 7,  // Eski hız seviyesine çekildi
             
             draw(scale = 1) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(scale, scale);
 
-                // 1. KADEME VE RENK HESABI (15 Kademe)
                 let kademe = Math.ceil((zirh / 100) * 15);
                 kademe = Math.max(1, Math.min(15, kademe));
-                
-                // Renk Geçişi: Yeşil (120) -> Kırmızı (0)
                 let hue = (kademe / 15) * 120;
                 let siviRengi = `hsl(${hue}, 100%, 40%)`;
 
-                // 2. DIŞ KÜRE (CAM)
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // 3. İÇTEKİ SIVI (15 Kademe Mantığı)
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap - 2, 0, Math.PI * 2);
-                ctx.clip(); // Sıvıyı küre içine hapseder
+                ctx.clip(); 
 
                 let dolulukYuksekligi = this.yariCap - ((kademe / 15) * (this.yariCap * 2));
                 ctx.fillStyle = siviRengi;
                 ctx.fillRect(-this.yariCap, dolulukYuksekligi, this.yariCap * 2, this.yariCap * 2);
                 ctx.restore();
 
-                // 4. YÖRÜNGEDEKİ OK (Yön Göstergesi)
                 if (gameActive) {
                     ctx.rotate(this.aci);
                     ctx.beginPath();
-                    ctx.moveTo(this.yariCap + 10, 0);   // Uç
-                    ctx.lineTo(this.yariCap + 25, 8);  // Arka Alt
-                    ctx.lineTo(this.yariCap + 22, 0);  // Orta Arka
-                    ctx.lineTo(this.yariCap + 25, -8); // Arka Üst
+                    // Ok yönü düzeltildi: Uç dışarı bakıyor, sırt küreye bakıyor
+                    ctx.moveTo(this.yariCap + 25, 0);   // Uç (Dışarıda)
+                    ctx.lineTo(this.yariCap + 10, 8);   // Arka Alt (Küre tarafı)
+                    ctx.lineTo(this.yariCap + 13, 0);   // Orta Arka
+                    ctx.lineTo(this.yariCap + 10, -8);  // Arka Üst (Küre tarafı)
                     ctx.closePath();
                     ctx.fillStyle = '#00ffcc';
                     ctx.fill();
@@ -133,7 +130,6 @@
                 saglikCantalar.push({
                     x: Math.random() * (canvas.width - 100) + 50,
                     y: Math.random() * (canvas.height - 100) + 50,
-                    size: 25
                 });
             }
         }
@@ -145,8 +141,8 @@
             if (keys['KeyD']) gemi.aci += 0.08;
             
             let hiz = 0;
-            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? 9 : 5;
-            else if (keys['KeyS']) hiz = -4;
+            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
+            else if (keys['KeyS']) hiz = -3;
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
@@ -154,7 +150,6 @@
             gemi.x = Math.max(30, Math.min(canvas.width - 30, gemi.x));
             gemi.y = Math.max(30, Math.min(canvas.height - 30, gemi.y));
 
-            // Ateşleme
             if (keys['Space'] && !gemi.ateslendi) {
                 fire('normal');
                 gemi.ateslendi = true;
@@ -163,12 +158,10 @@
             if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
             if (lazerSarj < 100) lazerSarj += 0.2;
 
-            // UI Güncelleme
             document.getElementById('skor').innerText = skor;
             document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
             document.getElementById('lazerSarj').innerText = `%${Math.floor(lazerSarj)}`;
 
-            // Sağlık Çantası Toplama
             saglikCantalar.forEach((s, si) => {
                 if (Math.hypot(gemi.x - s.x, gemi.y - s.y) < 40) {
                     zirh = Math.min(80, zirh + 30);
@@ -176,17 +169,15 @@
                 }
             });
 
-            // Mıknatıs (Yumuşatılmış)
             puanlar.forEach((p, pi) => {
                 let dist = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if (dist < 180) { // Çekim mesafesi düşürüldü
+                if (dist < 180) {
                     p.x += (gemi.x - p.x) / dist * 3.5;
                     p.y += (gemi.y - p.y) / dist * 3.5;
                 }
                 if (dist < 30) { skor += 100; puanlar.splice(pi, 1); }
             });
 
-            // Mermiler ve Düşmanlar
             mermiler.forEach((m, mi) => {
                 m.x += m.vx; m.y += m.vy;
                 if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
@@ -194,11 +185,12 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                d.x += (gemi.x - d.x) / dist * (1.5 + skor/20000);
-                d.y += (gemi.y - d.y) / dist * (1.5 + skor/20000);
+                // Düşman hızı eski seviyeye çekildi
+                d.x += (gemi.x - d.x) / dist * (1.2 + skor/25000);
+                d.y += (gemi.y - d.y) / dist * (1.2 + skor/25000);
 
                 if(dist < 35) {
-                    zirh -= 0.4;
+                    zirh -= 0.15; // Hasar miktarı eski/dengeli seviyeye çekildi
                     if(zirh <= 0) gameOver();
                 }
 
