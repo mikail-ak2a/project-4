@@ -2,70 +2,33 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Kaptan Mikail v3</title>
+    <title>Ultimate Starship Defender - Liquid Sphere Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
-        
-        /* Geliştirilmiş Kutulu Giriş Ekranı */
         #startScreen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex; flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-            padding-left: 10%; padding-top: 12vh;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column;
+            justify-content: flex-start; align-items: flex-start;
+            padding-left: 10%; padding-top: 12vh; z-index: 10;
         }
-
-        /* Ana Buton */
         #startButton {
-            padding: 25px 50px;
-            width: 450px; /* Sabit genişlik ile hizalama */
-            font-size: 32px;
-            background: transparent;
-            color: #00ffcc;
-            border: 3px solid #00ffcc;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            transition: 0.3s;
-            margin-bottom: 25px;
-            text-transform: uppercase;
-            font-weight: bold;
-            text-align: center;
+            padding: 25px 50px; width: 450px; font-size: 32px; background: transparent;
+            color: #00ffcc; border: 3px solid #00ffcc; cursor: pointer;
+            transition: 0.3s; margin-bottom: 25px; text-transform: uppercase; font-weight: bold;
         }
-
-        #startButton:hover {
-            background: #00ffcc;
-            color: #000;
-            box-shadow: 0 0 30px #00ffcc;
-        }
-
-        /* Skor Kutuları (Ana butonun %70'i kadar) */
+        #startButton:hover { background: #00ffcc; color: #000; box-shadow: 0 0 30px #00ffcc; }
         .score-box {
-            padding: 15px 30px;
-            width: 315px; /* 450 * 0.7 = 315px */
-            font-size: 20px;
-            color: #fff;
-            border: 2px solid rgba(0, 255, 204, 0.5);
-            margin-bottom: 15px;
-            text-align: center;
-            background: rgba(0, 40, 40, 0.3);
-            text-shadow: 0 0 8px #00ffcc;
-            font-weight: bold;
-            box-sizing: border-box;
+            padding: 15px 30px; width: 315px; font-size: 20px; color: #fff;
+            border: 2px solid rgba(0, 255, 204, 0.5); margin-bottom: 15px;
+            text-align: center; background: rgba(0, 40, 40, 0.3); font-weight: bold;
         }
-
-        /* Oyun İçi UI */
         #gameUI {
-            position: absolute; top: 25px; left: 25px;
-            background: rgba(0, 40, 40, 0.85); padding: 20px;
-            border: 2px solid #00ffcc; border-radius: 10px;
-            display: none; pointer-events: none;
+            position: absolute; top: 25px; left: 25px; background: rgba(0, 40, 40, 0.85);
+            padding: 20px; border: 2px solid #00ffcc; border-radius: 10px; display: none; pointer-events: none;
         }
         #gameUI div { font-size: 22px; margin-bottom: 8px; font-weight: bold; }
-        .label { color: #888; font-size: 16px; display: block; }
+        .label { color: #888; font-size: 14px; display: block; }
     </style>
 </head>
 <body>
@@ -77,10 +40,10 @@
     </div>
 
     <div id="gameUI">
-        <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 15px; padding-bottom: 5px;">KAPTAN MİKAİL</div>
+        <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 10px;">KOMUTA PANELİ</div>
         <div><span class="label">SKOR</span> <span id="skor" style="color: #fff;">0</span></div>
-        <div><span class="label">ZIRH</span> <span id="zirh" style="color: #ff4444;">%100</span></div>
-        <div><span class="label">LAZER ŞARJ</span> <span id="lazerSarj" style="color: #00ffff;">%0</span></div>
+        <div><span class="label">SIVI SEVİYESİ</span> <span id="zirh" style="color: #0f0;">%100</span></div>
+        <div><span class="label">LAZER ÜNİTESİ</span> <span id="lazerSarj" style="color: #0ff;">%0</span></div>
     </div>
 
     <canvas id="game"></canvas>
@@ -107,7 +70,7 @@
         let mermiler = [];
         let dusmanlar = [];
         let puanlar = [];
-        let damageFlash = 0;
+        let saglikCantalar = [];
 
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -116,88 +79,82 @@
             x: canvas.width / 2,
             y: canvas.height / 2,
             aci: 0,
-            normalHiz: 5,
-            turboHiz: 9,
-            donusHizi: 0.08,
+            yariCap: 22,
             
             draw(scale = 1) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                ctx.rotate(this.aci);
                 ctx.scale(scale, scale);
+
+                // 1. KADEME VE RENK HESABI (15 Kademe)
+                let kademe = Math.ceil((zirh / 100) * 15);
+                kademe = Math.max(1, Math.min(15, kademe));
                 
+                // Renk Geçişi: Yeşil (120) -> Kırmızı (0)
+                let hue = (kademe / 15) * 120;
+                let siviRengi = `hsl(${hue}, 100%, 40%)`;
+
+                // 2. DIŞ KÜRE (CAM)
                 ctx.beginPath();
-                ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15);
-                ctx.closePath();
-
-                if (damageFlash > 0) {
-                    ctx.fillStyle = `rgb(${damageFlash * 255}, ${255 - damageFlash * 255}, ${204 - damageFlash * 204})`;
-                } else {
-                    ctx.fillStyle = '#00ffcc';
-                }
-
-                ctx.fill();
+                ctx.arc(0, 0, this.yariCap, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 2;
                 ctx.stroke();
-                
-                if (gameActive && keys['KeyW']) {
-                    ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(-25, 0);
-                    ctx.strokeStyle = keys['ShiftLeft'] ? '#0ff' : '#fa0';
-                    ctx.stroke();
+
+                // 3. İÇTEKİ SIVI (15 Kademe Mantığı)
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(0, 0, this.yariCap - 2, 0, Math.PI * 2);
+                ctx.clip(); // Sıvıyı küre içine hapseder
+
+                let dolulukYuksekligi = this.yariCap - ((kademe / 15) * (this.yariCap * 2));
+                ctx.fillStyle = siviRengi;
+                ctx.fillRect(-this.yariCap, dolulukYuksekligi, this.yariCap * 2, this.yariCap * 2);
+                ctx.restore();
+
+                // 4. YÖRÜNGEDEKİ OK (Yön Göstergesi)
+                if (gameActive) {
+                    ctx.rotate(this.aci);
+                    ctx.beginPath();
+                    ctx.moveTo(this.yariCap + 10, 0);   // Uç
+                    ctx.lineTo(this.yariCap + 25, 8);  // Arka Alt
+                    ctx.lineTo(this.yariCap + 22, 0);  // Orta Arka
+                    ctx.lineTo(this.yariCap + 25, -8); // Arka Üst
+                    ctx.closePath();
+                    ctx.fillStyle = '#00ffcc';
+                    ctx.fill();
                 }
                 ctx.restore();
             }
         };
 
-        function startNewGame() {
-            gameActive = true;
-            skor = 0; zirh = 100; lazerSarj = 0;
-            dusmanlar = []; mermiler = []; puanlar = [];
-            gemi.x = canvas.width / 2; gemi.y = canvas.height / 2;
-            startScreen.style.display = 'none';
-            document.getElementById('gameUI').style.display = 'block';
-            updateUI();
+        function spawnSaglik() {
+            if (zirh < 80 && saglikCantalar.length < 2) {
+                saglikCantalar.push({
+                    x: Math.random() * (canvas.width - 100) + 50,
+                    y: Math.random() * (canvas.height - 100) + 50,
+                    size: 25
+                });
+            }
         }
-
-        function gameOver() {
-            gameActive = false;
-            lastScore = skor;
-            if(skor > highScore) highScore = skor;
-            localStorage.setItem('highScore', highScore);
-            localStorage.setItem('lastScore', lastScore);
-            document.getElementById('highScoreText').innerText = highScore;
-            document.getElementById('lastScoreText').innerText = lastScore;
-            document.getElementById('gameUI').style.display = 'none';
-            startScreen.style.display = 'flex';
-        }
-
-        function updateUI() {
-            document.getElementById('skor').innerText = skor;
-            document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
-            document.getElementById('lazerSarj').innerText = `%${Math.floor(lazerSarj)}`;
-        }
-
-        startButton.addEventListener('click', startNewGame);
 
         function update() {
             if (!gameActive) return;
 
-            if (damageFlash > 0) damageFlash -= 0.05;
-
-            if (keys['KeyA']) gemi.aci -= gemi.donusHizi;
-            if (keys['KeyD']) gemi.aci += gemi.donusHizi;
+            if (keys['KeyA']) gemi.aci -= 0.08;
+            if (keys['KeyD']) gemi.aci += 0.08;
             
             let hiz = 0;
-            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
-            else if (keys['KeyS']) hiz = -gemi.normalHiz;
+            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? 9 : 5;
+            else if (keys['KeyS']) hiz = -4;
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
 
-            gemi.x = Math.max(25, Math.min(canvas.width - 25, gemi.x));
-            gemi.y = Math.max(25, Math.min(canvas.height - 25, gemi.y));
+            gemi.x = Math.max(30, Math.min(canvas.width - 30, gemi.x));
+            gemi.y = Math.max(30, Math.min(canvas.height - 30, gemi.y));
 
+            // Ateşleme
             if (keys['Space'] && !gemi.ateslendi) {
                 fire('normal');
                 gemi.ateslendi = true;
@@ -205,8 +162,31 @@
             }
             if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
             if (lazerSarj < 100) lazerSarj += 0.2;
-            updateUI();
 
+            // UI Güncelleme
+            document.getElementById('skor').innerText = skor;
+            document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
+            document.getElementById('lazerSarj').innerText = `%${Math.floor(lazerSarj)}`;
+
+            // Sağlık Çantası Toplama
+            saglikCantalar.forEach((s, si) => {
+                if (Math.hypot(gemi.x - s.x, gemi.y - s.y) < 40) {
+                    zirh = Math.min(80, zirh + 30);
+                    saglikCantalar.splice(si, 1);
+                }
+            });
+
+            // Mıknatıs (Yumuşatılmış)
+            puanlar.forEach((p, pi) => {
+                let dist = Math.hypot(gemi.x - p.x, gemi.y - p.y);
+                if (dist < 180) { // Çekim mesafesi düşürüldü
+                    p.x += (gemi.x - p.x) / dist * 3.5;
+                    p.y += (gemi.y - p.y) / dist * 3.5;
+                }
+                if (dist < 30) { skor += 100; puanlar.splice(pi, 1); }
+            });
+
+            // Mermiler ve Düşmanlar
             mermiler.forEach((m, mi) => {
                 m.x += m.vx; m.y += m.vy;
                 if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
@@ -214,12 +194,11 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                d.x += (gemi.x - d.x) / dist * (1.5 + skor/15000);
-                d.y += (gemi.y - d.y) / dist * (1.5 + skor/15000);
+                d.x += (gemi.x - d.x) / dist * (1.5 + skor/20000);
+                d.y += (gemi.y - d.y) / dist * (1.5 + skor/20000);
 
-                if(dist < 40) {
-                    zirh -= 0.5;
-                    damageFlash = 1;
+                if(dist < 35) {
+                    zirh -= 0.4;
                     if(zirh <= 0) gameOver();
                 }
 
@@ -228,22 +207,9 @@
                         puanlar.push({x: d.x, y: d.y});
                         dusmanlar.splice(di, 1);
                         if(m.type !== 'lazer') mermiler.splice(mi, 1);
-                        skor += 10; updateUI();
+                        skor += 10;
                     }
                 });
-            });
-
-            puanlar.forEach((p, pi) => {
-                let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if(d < 250) {
-                    p.x += (gemi.x - p.x) / d * 4; 
-                    p.y += (gemi.y - p.y) / d * 4;
-                }
-                if(d < 30) {
-                    skor += 100;
-                    updateUI();
-                    puanlar.splice(pi, 1);
-                }
             });
         }
 
@@ -256,13 +222,20 @@
             });
         }
 
-        let menuAnimStep = 0;
+        let menuAnim = 0;
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameActive) {
                 gemi.draw();
+                saglikCantalar.forEach(s => {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(s.x-12, s.y-12, 24, 24);
+                    ctx.fillStyle = '#f00';
+                    ctx.fillRect(s.x-10, s.y-3, 20, 6);
+                    ctx.fillRect(s.x-3, s.y-10, 6, 20);
+                });
                 mermiler.forEach(m => {
                     ctx.fillStyle = m.type === 'lazer' ? '#0ff' : '#ff0';
                     ctx.beginPath(); ctx.arc(m.x, m.y, 4, 0, Math.PI*2); ctx.fill();
@@ -272,34 +245,43 @@
                     ctx.beginPath(); ctx.arc(d.x, d.y, 20, 0, Math.PI*2); ctx.stroke();
                 });
                 puanlar.forEach(p => {
-                    ctx.fillStyle = '#0f0'; ctx.shadowBlur = 10; ctx.shadowColor = '#0f0';
-                    ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
-                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#0f0';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
                 });
             } else {
-                menuAnimStep += 0.04;
-                let dynamicScale = 3 + Math.sin(menuAnimStep) * 0.2;
+                menuAnim += 0.04;
                 ctx.save();
                 ctx.translate(canvas.width * 0.8, canvas.height * 0.3);
-                gemi.x = 0; gemi.y = 0;
                 gemi.aci += 0.005;
-                gemi.draw(dynamicScale);
+                gemi.draw(3 + Math.sin(menuAnim) * 0.2);
                 ctx.restore();
             }
         }
 
-        function loop() { update(); draw(); requestAnimationFrame(loop); }
-        setInterval(() => { if(gameActive) spawnEnemy(); }, 1200);
-        function spawnEnemy() {
-            if(dusmanlar.length < 15) {
-                let x = Math.random() > 0.5 ? -50 : canvas.width + 50;
-                let y = Math.random() * canvas.height;
-                dusmanlar.push({x, y});
-            }
+        function startNewGame() {
+            gameActive = true; skor = 0; zirh = 100;
+            dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
+            startScreen.style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
         }
+
+        function gameOver() {
+            gameActive = false;
+            lastScore = skor;
+            if(skor > highScore) highScore = skor;
+            localStorage.setItem('highScore', highScore);
+            localStorage.setItem('lastScore', lastScore);
+            document.getElementById('highScoreText').innerText = highScore;
+            document.getElementById('lastScoreText').innerText = lastScore;
+            startScreen.style.display = 'flex';
+            document.getElementById('gameUI').style.display = 'none';
+        }
+
+        startButton.addEventListener('click', startNewGame);
+        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 1500);
+        function spawnEnemy() { if(dusmanlar.length < 15) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
-        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     </script>
 </body>
 </html>
-
