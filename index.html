@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Slow Motion Edition</title>
+    <title>Ultimate Starship Defender - Balanced Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -80,9 +80,10 @@
             y: canvas.height / 2,
             aci: 0,
             yariCap: 22,
-            normalHiz: 0.9,   // Önceki 1.8'in yarısı
-            turboHiz: 1.6,    // Önceki 3.2'nin yarısı
-            donusHizi: 0.022, // Önceki 0.045'in yarısı
+            // Hızlar %38 yavaşlatma noktasına getirildi
+            normalHiz: 1.15,   
+            turboHiz: 2.1,    
+            donusHizi: 0.022, // Beğendiğin dönüş hızı sabit kaldı
             
             draw(scale = 1) {
                 ctx.save();
@@ -143,7 +144,7 @@
             
             let hiz = 0;
             if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
-            else if (keys['KeyS']) hiz = -0.7; // Geri gitme hızı da düşürüldü
+            else if (keys['KeyS']) hiz = -0.9;
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
@@ -154,7 +155,7 @@
             if (keys['Space'] && !gemi.ateslendi) {
                 fire('normal');
                 gemi.ateslendi = true;
-                setTimeout(() => gemi.ateslendi = false, 300); // Ateş hızı da biraz dengelendi
+                setTimeout(() => gemi.ateslendi = false, 280); 
             }
             if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
             if (lazerSarj < 100) lazerSarj += 0.15;
@@ -186,9 +187,9 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                // Düşman Hızı: 0.6'dan 0.3'e çekildi
-                d.x += (gemi.x - d.x) / dist * (0.3 + skor/100000);
-                d.y += (gemi.y - d.y) / dist * (0.3 + skor/100000);
+                // Düşman Hızı: %38 yavaşlatma noktasına göre ayarlandı
+                d.x += (gemi.x - d.x) / dist * (0.42 + skor/100000);
+                d.y += (gemi.y - d.y) / dist * (0.42 + skor/100000);
 
                 if(dist < 35) {
                     zirh -= 0.1; 
@@ -209,8 +210,8 @@
         function fire(type) {
             mermiler.push({
                 x: gemi.x, y: gemi.y,
-                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 7.5 : 4), // Mermi hızları da yarıya indirildi
-                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 7.5 : 4),
+                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 10 : 6),
+                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 10 : 6),
                 type: type
             });
         }
@@ -271,9 +272,9 @@
         }
 
         startButton.addEventListener('click', startNewGame);
-        // Düşmanlar artık daha nadir çıkıyor (4 saniyede bir)
-        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 4000);
-        function spawnEnemy() { if(dusmanlar.length < 10) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
+        // Düşman sıklığı %17 artırıldı (4000ms -> 3300ms)
+        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 3300);
+        function spawnEnemy() { if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
     </script>
