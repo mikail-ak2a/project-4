@@ -2,11 +2,12 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Mikail Final</title>
+    <title>Ultimate Starship Defender - Mikail Pro</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
         
+        /* Ekran Tasarımları */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column;
@@ -22,7 +23,14 @@
         }
         .btn:hover { background: #00ffcc; color: #000; box-shadow: 0 0 20px #00ffcc; }
 
-        .btn-sm { width: 315px; font-size: 18px; border: 2px solid #00ffcc; }
+        /* Ayarlar butonu - Skor kutularıyla aynı stil */
+        .btn-settings { 
+            width: 315px; font-size: 18px; 
+            border: 2px solid rgba(0, 255, 204, 0.5); 
+            background: rgba(0, 40, 40, 0.3); 
+            color: #fff;
+        }
+        .btn-settings:hover { background: rgba(0, 255, 204, 0.4); color: #fff; }
 
         .score-box {
             padding: 12px 25px; width: 315px; font-size: 18px; color: #fff;
@@ -30,13 +38,21 @@
             text-align: center; background: rgba(0, 40, 40, 0.3); font-weight: bold; box-sizing: border-box;
         }
 
-        #settingsScreen, #pauseScreen { display: none; align-items: center; padding-left: 0; justify-content: center; }
+        /* Ortalanmış Menüler */
+        #settingsScreen, #pauseScreen { 
+            display: none; align-items: center; padding-left: 0; justify-content: center; 
+        }
         .setting-item { margin: 10px 0; text-align: center; }
         input[type=range] { width: 300px; accent-color: #00ffcc; }
 
         #gameUI {
             position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.85);
             padding: 15px; border: 2px solid #00ffcc; border-radius: 8px; display: none;
+        }
+        #pauseBtnUI {
+            position: absolute; top: 140px; left: 20px; padding: 10px 15px;
+            background: rgba(0, 40, 40, 0.6); color: #00ffcc; border: 2px solid #00ffcc;
+            cursor: pointer; font-weight: bold; display: none; z-index: 50;
         }
     </style>
 </head>
@@ -46,11 +62,11 @@
         <button class="btn" onclick="startNewGame()">YENİ OYUNA BAŞLA</button>
         <div class="score-box">EN İYİ SKOR: <span id="highScoreText">0</span></div>
         <div class="score-box">EN SON SKOR: <span id="lastScoreText">0</span></div>
-        <button class="btn btn-sm" onclick="toggleSettings(true)">KONTROL AYARLARI</button>
+        <button class="btn btn-settings" onclick="toggleSettings(true)">KONTROL AYARLARI</button>
     </div>
 
     <div id="pauseScreen" class="screen">
-        <h1 style="color:#00ffcc">OYUN DURDURULDU</h1>
+        <h1 style="color:#00ffcc; text-shadow: 0 0 15px #00ffcc;">OYUN DURDURULDU</h1>
         <button class="btn" onclick="resumeGame()">DEVAM ET</button>
         <button class="btn" onclick="toggleSettings(true, true)">AYARLAR</button>
         <button class="btn" onclick="goToMainMenu()">ANA MENÜ</button>
@@ -59,12 +75,14 @@
     <div id="settingsScreen" class="screen">
         <h2 style="color:#00ffcc">KONTROL PANELİ</h2>
         <div class="setting-item"><label>EKSEN HASSASİYETİ: <span id="val_donus">0.022</span></label><br><input type="range" id="inp_donus" min="0.01" max="0.08" step="0.001" value="0.022"></div>
-        <div class="setting-item"><label>GEMİ HIZI: <span id="val_hiz">1.15</span></label><br><input type="range" id="inp_hiz" min="0.5" max="3.0" step="0.1" value="1.15"></div>
+        <div class="setting-item"><label>GEMİ HIZI: <span id="val_hiz">1.15</span></label><br><input type="range" id="inp_hiz" min="0.5" max="4.0" step="0.1" value="1.15"></div>
         <div class="setting-item"><label>DÜŞMAN SIKLIĞI: <span id="val_siklik">3.0</span></label><br><input type="range" id="inp_siklik" min="1.0" max="6.0" step="0.5" value="3.0"></div>
-        <div class="setting-item"><label>DÜŞMAN HIZI: <span id="val_dusmanHiz">0.42</span></label><br><input type="range" id="inp_dusmanHiz" min="0.1" max="1.5" step="0.05" value="0.42"></div>
+        <div class="setting-item"><label>DÜŞMAN HIZI: <span id="val_dusmanHiz">0.42</span></label><br><input type="range" id="inp_dusmanHiz" min="0.1" max="2.0" step="0.05" value="0.42"></div>
         <div class="setting-item"><label>SES SEVİYESİ: <span id="val_ses">50</span>%</label><br><input type="range" id="inp_ses" min="0" max="100" step="1" value="50"></div>
-        <button class="btn btn-sm" onclick="closeSettings()">KAYDET VE DÖN</button>
+        <button class="btn btn-settings" style="margin-top:20px" onclick="closeSettings()">KAYDET VE DÖN</button>
     </div>
+
+    <button id="pauseBtnUI" onclick="togglePause()">DURDUR (ESC)</button>
 
     <div id="gameUI">
         <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 5px;">KAPTAN MİKAİL</div>
@@ -86,19 +104,19 @@
         let mermiler = [], dusmanlar = [], puanlar = [], saglikCantalar = [], enemyInterval;
 
         let settings = JSON.parse(localStorage.getItem('userSettings')) || {
-            donus: 0.022, hiz: 1.15, siklik: 3.0, dusmanHiz: 0.42, ses: 0.5
+            donus: 0.022, hiz: 1.5, siklik: 2.5, dusmanHiz: 0.6, ses: 0.5
         };
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playSound(freq, type, decay, volMult = 1) {
+        function playSound(freq, type, decay, volMult = 1, expEnd = 0.01) {
             if(settings.ses === 0) return;
             if(audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + decay);
+            osc.frequency.exponentialRampToValueAtTime(expEnd, audioCtx.currentTime + decay);
             gain.gain.setValueAtTime(settings.ses * volMult, audioCtx.currentTime);
             gain.connect(audioCtx.destination);
             osc.connect(gain);
@@ -107,25 +125,28 @@
 
         const gemi = {
             x: canvas.width / 2, y: canvas.height / 2, aci: 0,
-            draw(scale = 1, customZirh = null, customAci = null) {
+            draw(scale = 1, customZirh = null, customAci = null, isBright = false) {
                 let displayZirh = customZirh !== null ? customZirh : zirh;
                 let displayAci = customAci !== null ? customAci : this.aci;
                 
                 ctx.save(); ctx.translate(this.x, this.y); ctx.scale(scale, scale);
                 // Cam Küre
                 ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2);
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.strokeStyle = isBright ? '#fff' : '#aaa'; ctx.lineWidth = 2; ctx.stroke();
                 
-                // Sıvı Mantığı (15 Kademe)
+                // Sıvı Mantığı
                 let k = Math.ceil((displayZirh / 100) * 15);
                 ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.clip();
-                ctx.fillStyle = `hsl(${(k/15)*120}, 100%, 40%)`;
+                // Daha canlı renk (Lightness artırıldı)
+                ctx.fillStyle = `hsl(${(k/15)*120}, 100%, ${isBright ? '50%' : '40%'})`;
+                ctx.shadowBlur = isBright ? 15 : 0; ctx.shadowColor = ctx.fillStyle;
                 ctx.fillRect(-22, 22 - ((k/15)*44), 44, 44); ctx.restore();
 
                 // Yörünge Oku
                 ctx.rotate(displayAci);
                 ctx.beginPath(); ctx.moveTo(34, 0); ctx.lineTo(54, 0); ctx.lineTo(44, 8); ctx.lineTo(44, -8); ctx.lineTo(54, 0);
-                ctx.fillStyle = '#00ffcc'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = isBright ? '#00ffcc' : '#00aa88'; ctx.fill(); 
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
                 ctx.restore();
             }
         };
@@ -143,7 +164,7 @@
 
         function update() {
             if (!gameActive || isPaused) return;
-            let zorluk = 1 + (skor / 25000);
+            let zorluk = 1 + (skor / 20000);
             if (keys['KeyA']) gemi.aci -= settings.donus;
             if (keys['KeyD']) gemi.aci += settings.donus;
             let v = 0;
@@ -154,9 +175,9 @@
             gemi.y = Math.max(30, Math.min(canvas.height - 30, gemi.y));
 
             if (keys['Space'] && !gemi.fireLock) {
-                playSound(150, 'triangle', 0.1); 
-                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*12, vy: Math.sin(gemi.aci)*12});
-                gemi.fireLock = true; setTimeout(() => gemi.fireLock = false, 250);
+                playSound(180, 'triangle', 0.12, 0.8, 0.05); // Güçlü atış
+                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*14, vy: Math.sin(gemi.aci)*14});
+                gemi.fireLock = true; setTimeout(() => gemi.fireLock = false, 200);
             }
 
             dusmanlar.forEach((d, i) => {
@@ -166,7 +187,7 @@
                 if(dist < 35) { zirh -= 0.15; if(zirh <= 0) gameOver(); }
                 mermiler.forEach((m, mi) => {
                     if(Math.hypot(m.x - d.x, m.y - d.y) < 25) {
-                        playSound(2500, 'sine', 0.1, 0.4); // Çın Sesi
+                        playSound(3200, 'sine', 0.08, 0.3, 2000); // DEMİRE ÇARPMA (ÇIN) SESİ
                         puanlar.push({x: d.x, y: d.y});
                         dusmanlar.splice(i, 1); mermiler.splice(mi, 1); skor += 10;
                     }
@@ -175,7 +196,7 @@
 
             puanlar.forEach((p, i) => {
                 let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if(d < 180) { p.x += (gemi.x-p.x)/d*4; p.y += (gemi.y-p.y)/d*4; }
+                if(d < 180) { p.x += (gemi.x-p.x)/d*4.5; p.y += (gemi.y-p.y)/d*4.5; }
                 if(d < 30) { skor += 100; puanlar.splice(i, 1); }
             });
 
@@ -191,27 +212,30 @@
             document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
         }
 
-        let menuAnimZirh = 100, menuAnimDir = -0.5, menuAci = 0;
+        let menuAnimZirh = 100, menuAnimDir = -0.6, menuAci = 0;
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0,0,canvas.width,canvas.height);
             if(gameActive) {
-                gemi.draw();
+                gemi.draw(1, null, null, true);
                 mermiler.forEach(m => { ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.arc(m.x,m.y,4,0,Math.PI*2); ctx.fill(); });
                 dusmanlar.forEach(d => { ctx.strokeStyle='#f44'; ctx.beginPath(); ctx.arc(d.x,d.y,20,0,Math.PI*2); ctx.stroke(); });
-                puanlar.forEach(p => { ctx.fillStyle='#0f0'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); });
+                puanlar.forEach(p => { ctx.fillStyle='#0f0'; ctx.shadowBlur = 10; ctx.shadowColor = '#0f0'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; });
                 saglikCantalar.forEach(s => { ctx.fillStyle='#fff'; ctx.fillRect(s.x-10,s.y-10,20,20); ctx.fillStyle='#f00'; ctx.fillRect(s.x-8,s.y-2,16,4); ctx.fillRect(s.x-2,s.y-8,4,16); });
             } else {
-                // Ana Menü Animasyonu
                 menuAnimZirh += menuAnimDir;
-                if(menuAnimZirh <= 10 || menuAnimZirh >= 100) menuAnimDir *= -1;
-                menuAci += (Math.PI * 2) / (60 * 2.5); // 2.5 saniyede tam tur
+                if(menuAnimZirh <= 15 || menuAnimZirh >= 100) menuAnimDir *= -1;
+                menuAci += (Math.PI * 2) / (60 * 2.5);
                 ctx.save(); ctx.translate(canvas.width*0.75, canvas.height*0.35);
                 gemi.x = 0; gemi.y = 0;
-                gemi.draw(3, menuAnimZirh, menuAci); ctx.restore();
+                gemi.draw(3.5, menuAnimZirh, menuAci, true); ctx.restore();
             }
         }
 
-        function togglePause() { if(!gameActive) return; isPaused = !isPaused; document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none'; }
+        function togglePause() { 
+            if(!gameActive) return; 
+            isPaused = !isPaused; 
+            document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none'; 
+        }
         function resumeGame() { isPaused = false; document.getElementById('pauseScreen').style.display = 'none'; }
         function goToMainMenu() { location.reload(); }
 
@@ -220,11 +244,12 @@
             dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
             document.getElementById('startScreen').style.display = 'none';
             document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('pauseBtnUI').style.display = 'block';
             if(enemyInterval) clearInterval(enemyInterval);
             enemyInterval = setInterval(() => {
                 if(gameActive && !isPaused) {
                     spawnEnemy();
-                    if(zirh < 70 && saglikCantalar.length < 2) saglikCantalar.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
+                    if(zirh < 65 && saglikCantalar.length < 2) saglikCantalar.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
                 }
             }, settings.siklik * 1000);
         }
@@ -269,3 +294,4 @@
     </script>
 </body>
 </html>
+
