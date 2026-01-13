@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Fixed Edition</title>
+    <title>Mikail Starship - Stabil Sürüm</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -80,46 +80,52 @@
             y: canvas.height / 2,
             aci: 0,
             yariCap: 22,
-            normalHiz: 4, // Eski hız seviyesine çekildi
-            turboHiz: 7,  // Eski hız seviyesine çekildi
+            normalHiz: 3.5, // Hızlar dengelendi
+            turboHiz: 6.5,  // Hızlar dengelendi
             
             draw(scale = 1) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(scale, scale);
 
+                // 15 Kademe Sıvı Mantığı
                 let kademe = Math.ceil((zirh / 100) * 15);
                 kademe = Math.max(1, Math.min(15, kademe));
                 let hue = (kademe / 15) * 120;
                 let siviRengi = `hsl(${hue}, 100%, 40%)`;
 
+                // Cam Küre
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
+                // Sıvı Çizimi
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap - 2, 0, Math.PI * 2);
                 ctx.clip(); 
-
                 let dolulukYuksekligi = this.yariCap - ((kademe / 15) * (this.yariCap * 2));
                 ctx.fillStyle = siviRengi;
                 ctx.fillRect(-this.yariCap, dolulukYuksekligi, this.yariCap * 2, this.yariCap * 2);
                 ctx.restore();
 
+                // OK YÖNÜ DÜZELTİLDİ: Uç dışa, sırt içe bakıyor
                 if (gameActive) {
                     ctx.rotate(this.aci);
                     ctx.beginPath();
-                    // Ok yönü düzeltildi: Uç dışarı bakıyor, sırt küreye bakıyor
-                    ctx.moveTo(this.yariCap + 25, 0);   // Uç (Dışarıda)
-                    ctx.lineTo(this.yariCap + 10, 8);   // Arka Alt (Küre tarafı)
-                    ctx.lineTo(this.yariCap + 13, 0);   // Orta Arka
-                    ctx.lineTo(this.yariCap + 10, -8);  // Arka Üst (Küre tarafı)
-                    ctx.closePath();
+                    ctx.moveTo(this.yariCap + 12, 0);   // Sırt tarafı (Küreye en yakın nokta)
+                    ctx.lineTo(this.yariCap + 30, 0);   // Sivri Uç (Gidilen yön)
+                    ctx.moveTo(this.yariCap + 30, 0);   // Sivri uçtan kenarlara kanat atalım
+                    ctx.lineTo(this.yariCap + 20, 8);
+                    ctx.lineTo(this.yariCap + 20, -8);
+                    ctx.lineTo(this.yariCap + 30, 0);
                     ctx.fillStyle = '#00ffcc';
                     ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
                 }
                 ctx.restore();
             }
@@ -137,12 +143,15 @@
         function update() {
             if (!gameActive) return;
 
-            if (keys['KeyA']) gemi.aci -= 0.08;
-            if (keys['KeyD']) gemi.aci += 0.08;
+            if (keys['KeyA']) gemi.aci -= 0.07;
+            if (keys['KeyD']) gemi.aci += 0.07;
             
             let hiz = 0;
-            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
-            else if (keys['KeyS']) hiz = -3;
+            if (keys['KeyW']) {
+                hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
+            } else if (keys['KeyS']) {
+                hiz = -3;
+            }
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
@@ -153,10 +162,10 @@
             if (keys['Space'] && !gemi.ateslendi) {
                 fire('normal');
                 gemi.ateslendi = true;
-                setTimeout(() => gemi.ateslendi = false, 200);
+                setTimeout(() => gemi.ateslendi = false, 250);
             }
             if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
-            if (lazerSarj < 100) lazerSarj += 0.2;
+            if (lazerSarj < 100) lazerSarj += 0.15;
 
             document.getElementById('skor').innerText = skor;
             document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
@@ -171,9 +180,9 @@
 
             puanlar.forEach((p, pi) => {
                 let dist = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if (dist < 180) {
-                    p.x += (gemi.x - p.x) / dist * 3.5;
-                    p.y += (gemi.y - p.y) / dist * 3.5;
+                if (dist < 150) { // Çekim mesafesi daha da yumuşatıldı
+                    p.x += (gemi.x - p.x) / dist * 3;
+                    p.y += (gemi.y - p.y) / dist * 3;
                 }
                 if (dist < 30) { skor += 100; puanlar.splice(pi, 1); }
             });
@@ -185,12 +194,11 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                // Düşman hızı eski seviyeye çekildi
-                d.x += (gemi.x - d.x) / dist * (1.2 + skor/25000);
-                d.y += (gemi.y - d.y) / dist * (1.2 + skor/25000);
+                d.x += (gemi.x - d.x) / dist * (1.1 + skor/30000); // Düşman hızı yavaşlatıldı
+                d.y += (gemi.y - d.y) / dist * (1.1 + skor/30000);
 
                 if(dist < 35) {
-                    zirh -= 0.15; // Hasar miktarı eski/dengeli seviyeye çekildi
+                    zirh -= 0.1; // Hasar miktarı çok azaltıldı
                     if(zirh <= 0) gameOver();
                 }
 
@@ -208,8 +216,8 @@
         function fire(type) {
             mermiler.push({
                 x: gemi.x, y: gemi.y,
-                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 20 : 12),
-                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 20 : 12),
+                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 18 : 10),
+                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 18 : 10),
                 type: type
             });
         }
@@ -270,11 +278,10 @@
         }
 
         startButton.addEventListener('click', startNewGame);
-        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 1500);
-        function spawnEnemy() { if(dusmanlar.length < 15) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
+        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 1800);
+        function spawnEnemy() { if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
     </script>
 </body>
 </html>
-
