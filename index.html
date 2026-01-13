@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Mikail Edition</title>
+    <title>Ultimate Starship Defender - Mikail Final</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -22,7 +22,6 @@
         }
         .btn:hover { background: #00ffcc; color: #000; box-shadow: 0 0 20px #00ffcc; }
 
-        /* Küçük Butonlar (Skor kutuları boyutunda) */
         .btn-sm { width: 315px; font-size: 18px; border: 2px solid #00ffcc; }
 
         .score-box {
@@ -38,11 +37,6 @@
         #gameUI {
             position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.85);
             padding: 15px; border: 2px solid #00ffcc; border-radius: 8px; display: none;
-        }
-        #pauseBtn {
-            position: absolute; top: 20px; right: 20px; padding: 10px 20px;
-            background: transparent; color: #00ffcc; border: 2px solid #00ffcc;
-            cursor: pointer; font-weight: bold; display: none;
         }
     </style>
 </head>
@@ -72,8 +66,6 @@
         <button class="btn btn-sm" onclick="closeSettings()">KAYDET VE DÖN</button>
     </div>
 
-    <button id="pauseBtn" onclick="togglePause()">DURDUR (ESC)</button>
-
     <div id="gameUI">
         <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 5px;">KAPTAN MİKAİL</div>
         <div>SKOR: <span id="skor" style="color: #fff;">0</span></div>
@@ -99,7 +91,7 @@
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playSound(freq, type, decay) {
+        function playSound(freq, type, decay, volMult = 1) {
             if(settings.ses === 0) return;
             if(audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
@@ -107,7 +99,7 @@
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + decay);
-            gain.gain.setValueAtTime(settings.ses, audioCtx.currentTime);
+            gain.gain.setValueAtTime(settings.ses * volMult, audioCtx.currentTime);
             gain.connect(audioCtx.destination);
             osc.connect(gain);
             osc.start(); osc.stop(audioCtx.currentTime + decay);
@@ -115,26 +107,32 @@
 
         const gemi = {
             x: canvas.width / 2, y: canvas.height / 2, aci: 0,
-            draw() {
-                ctx.save(); ctx.translate(this.x, this.y);
+            draw(scale = 1, customZirh = null, customAci = null) {
+                let displayZirh = customZirh !== null ? customZirh : zirh;
+                let displayAci = customAci !== null ? customAci : this.aci;
+                
+                ctx.save(); ctx.translate(this.x, this.y); ctx.scale(scale, scale);
+                // Cam Küre
                 ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                let k = Math.ceil((zirh / 100) * 15);
+                
+                // Sıvı Mantığı (15 Kademe)
+                let k = Math.ceil((displayZirh / 100) * 15);
                 ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.clip();
                 ctx.fillStyle = `hsl(${(k/15)*120}, 100%, 40%)`;
                 ctx.fillRect(-22, 22 - ((k/15)*44), 44, 44); ctx.restore();
-                if (gameActive) {
-                    ctx.rotate(this.aci);
-                    ctx.beginPath(); ctx.moveTo(34, 0); ctx.lineTo(54, 0); ctx.lineTo(44, 8); ctx.lineTo(44, -8); ctx.lineTo(54, 0);
-                    ctx.fillStyle = '#00ffcc'; ctx.fill();
-                }
+
+                // Yörünge Oku
+                ctx.rotate(displayAci);
+                ctx.beginPath(); ctx.moveTo(34, 0); ctx.lineTo(54, 0); ctx.lineTo(44, 8); ctx.lineTo(44, -8); ctx.lineTo(54, 0);
+                ctx.fillStyle = '#00ffcc'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
                 ctx.restore();
             }
         };
 
         function spawnEnemy() {
             if(!gameActive || isPaused) return;
-            const side = Math.floor(Math.random() * 4); // 0:üst, 1:sağ, 2:alt, 3:sol
+            const side = Math.floor(Math.random() * 4);
             let x, y;
             if(side === 0) { x = Math.random()*canvas.width; y = -50; }
             else if(side === 1) { x = canvas.width+50; y = Math.random()*canvas.height; }
@@ -145,7 +143,7 @@
 
         function update() {
             if (!gameActive || isPaused) return;
-            let zorluk = 1 + (skor / 20000);
+            let zorluk = 1 + (skor / 25000);
             if (keys['KeyA']) gemi.aci -= settings.donus;
             if (keys['KeyD']) gemi.aci += settings.donus;
             let v = 0;
@@ -156,8 +154,8 @@
             gemi.y = Math.max(30, Math.min(canvas.height - 30, gemi.y));
 
             if (keys['Space'] && !gemi.fireLock) {
-                playSound(150, 'triangle', 0.1); // Ateş sesi
-                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*10, vy: Math.sin(gemi.aci)*10});
+                playSound(150, 'triangle', 0.1); 
+                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*12, vy: Math.sin(gemi.aci)*12});
                 gemi.fireLock = true; setTimeout(() => gemi.fireLock = false, 250);
             }
 
@@ -168,7 +166,7 @@
                 if(dist < 35) { zirh -= 0.15; if(zirh <= 0) gameOver(); }
                 mermiler.forEach((m, mi) => {
                     if(Math.hypot(m.x - d.x, m.y - d.y) < 25) {
-                        playSound(1200, 'sine', 0.05); // Çın sesi
+                        playSound(2500, 'sine', 0.1, 0.4); // Çın Sesi
                         puanlar.push({x: d.x, y: d.y});
                         dusmanlar.splice(i, 1); mermiler.splice(mi, 1); skor += 10;
                     }
@@ -177,13 +175,13 @@
 
             puanlar.forEach((p, i) => {
                 let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if(d < 150) { p.x += (gemi.x-p.x)/d*4; p.y += (gemi.y-p.y)/d*4; }
+                if(d < 180) { p.x += (gemi.x-p.x)/d*4; p.y += (gemi.y-p.y)/d*4; }
                 if(d < 30) { skor += 100; puanlar.splice(i, 1); }
             });
 
             saglikCantalar.forEach((s, i) => {
                 if(Math.hypot(gemi.x - s.x, gemi.y - s.y) < 40) {
-                    zirh = Math.min(100, zirh + 30); // %80 sınırı kaldırıldı
+                    zirh = Math.min(100, zirh + 30);
                     saglikCantalar.splice(i, 1);
                 }
             });
@@ -193,6 +191,7 @@
             document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
         }
 
+        let menuAnimZirh = 100, menuAnimDir = -0.5, menuAci = 0;
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0,0,canvas.width,canvas.height);
             if(gameActive) {
@@ -202,16 +201,17 @@
                 puanlar.forEach(p => { ctx.fillStyle='#0f0'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); });
                 saglikCantalar.forEach(s => { ctx.fillStyle='#fff'; ctx.fillRect(s.x-10,s.y-10,20,20); ctx.fillStyle='#f00'; ctx.fillRect(s.x-8,s.y-2,16,4); ctx.fillRect(s.x-2,s.y-8,4,16); });
             } else {
-                ctx.save(); ctx.translate(canvas.width*0.8, canvas.height*0.3); gemi.draw(); ctx.restore();
+                // Ana Menü Animasyonu
+                menuAnimZirh += menuAnimDir;
+                if(menuAnimZirh <= 10 || menuAnimZirh >= 100) menuAnimDir *= -1;
+                menuAci += (Math.PI * 2) / (60 * 2.5); // 2.5 saniyede tam tur
+                ctx.save(); ctx.translate(canvas.width*0.75, canvas.height*0.35);
+                gemi.x = 0; gemi.y = 0;
+                gemi.draw(3, menuAnimZirh, menuAci); ctx.restore();
             }
         }
 
-        function togglePause() {
-            if(!gameActive) return;
-            isPaused = !isPaused;
-            document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none';
-        }
-
+        function togglePause() { if(!gameActive) return; isPaused = !isPaused; document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none'; }
         function resumeGame() { isPaused = false; document.getElementById('pauseScreen').style.display = 'none'; }
         function goToMainMenu() { location.reload(); }
 
@@ -220,7 +220,6 @@
             dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
             document.getElementById('startScreen').style.display = 'none';
             document.getElementById('gameUI').style.display = 'block';
-            document.getElementById('pauseBtn').style.display = 'block';
             if(enemyInterval) clearInterval(enemyInterval);
             enemyInterval = setInterval(() => {
                 if(gameActive && !isPaused) {
@@ -235,7 +234,7 @@
             document.getElementById(fromPause ? 'pauseScreen' : 'startScreen').style.display = show ? 'none' : 'flex';
             document.getElementById('settingsScreen').style.display = show ? 'flex' : 'none';
         }
-        function closeSettings() { toggleSettings(false, settingsFromPause); updateScoreDisplay(); }
+        function closeSettings() { toggleSettings(false, settingsFromPause); }
 
         function gameOver() {
             gameActive = false; clearInterval(enemyInterval);
@@ -259,20 +258,14 @@
             });
         }
 
-        function updateScoreDisplay() {
-            document.getElementById('highScoreText').innerText = localStorage.getItem('highScore') || 0;
-            document.getElementById('lastScoreText').innerText = localStorage.getItem('lastScore') || 0;
-        }
-
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            if(e.code === 'Escape') togglePause();
-        });
+        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code === 'Escape') togglePause(); });
         window.addEventListener('keyup', e => keys[e.code] = false);
         function loop() { update(); draw(); requestAnimationFrame(loop); }
-        updateSettingsUI(); updateScoreDisplay(); loop();
+        updateSettingsUI();
+        document.getElementById('highScoreText').innerText = localStorage.getItem('highScore') || 0;
+        document.getElementById('lastScoreText').innerText = localStorage.getItem('lastScore') || 0;
+        loop();
+        window.onresize = () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
     </script>
 </body>
 </html>
-
- 
