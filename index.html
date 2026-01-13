@@ -2,68 +2,85 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Kaptan Mikail</title>
+    <title>Ultimate Starship Defender - Kaptan Mikail v3</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
         
-        /* Giriş Ekranı Tasarımı */
+        /* Geliştirilmiş Kutulu Giriş Ekranı */
         #startScreen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9);
             display: flex; flex-direction: column;
-            justify-content: center; align-items: flex-start;
-            padding-left: 10%; z-index: 10;
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding-left: 10%; padding-top: 12vh;
+            z-index: 10;
         }
 
+        /* Ana Buton */
         #startButton {
-            padding: 20px 40px;
-            font-size: 24px;
+            padding: 25px 50px;
+            width: 450px; /* Sabit genişlik ile hizalama */
+            font-size: 32px;
             background: transparent;
             color: #00ffcc;
-            border: 2px solid #00ffcc;
+            border: 3px solid #00ffcc;
             cursor: pointer;
             font-family: 'Courier New', monospace;
             transition: 0.3s;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-align: center;
         }
 
         #startButton:hover {
             background: #00ffcc;
             color: #000;
-            box-shadow: 0 0 20px #00ffcc;
+            box-shadow: 0 0 30px #00ffcc;
         }
 
-        .score-info {
+        /* Skor Kutuları (Ana butonun %70'i kadar) */
+        .score-box {
+            padding: 15px 30px;
+            width: 315px; /* 450 * 0.7 = 315px */
             font-size: 20px;
-            margin: 5px 0;
             color: #fff;
-            text-shadow: 0 0 5px #00ffcc;
+            border: 2px solid rgba(0, 255, 204, 0.5);
+            margin-bottom: 15px;
+            text-align: center;
+            background: rgba(0, 40, 40, 0.3);
+            text-shadow: 0 0 8px #00ffcc;
+            font-weight: bold;
+            box-sizing: border-box;
         }
 
         /* Oyun İçi UI */
         #gameUI {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(0, 40, 40, 0.8); padding: 15px;
-            border: 2px solid #00ffcc; border-radius: 5px;
+            position: absolute; top: 25px; left: 25px;
+            background: rgba(0, 40, 40, 0.85); padding: 20px;
+            border: 2px solid #00ffcc; border-radius: 10px;
             display: none; pointer-events: none;
         }
+        #gameUI div { font-size: 22px; margin-bottom: 8px; font-weight: bold; }
+        .label { color: #888; font-size: 16px; display: block; }
     </style>
 </head>
 <body>
 
     <div id="startScreen">
         <button id="startButton">YENİ OYUNA BAŞLA</button>
-        <div class="score-info">EN İYİ SKOR: <span id="highScoreText">0</span></div>
-        <div class="score-info">EN SON SKOR: <span id="lastScoreText">0</span></div>
+        <div class="score-box">EN İYİ SKOR: <span id="highScoreText">0</span></div>
+        <div class="score-box">EN SON SKOR: <span id="lastScoreText">0</span></div>
     </div>
 
     <div id="gameUI">
-        <div style="font-weight: bold;">KAPTAN MİKAİL</div>
-        <div>Skor: <span id="skor">0</span></div>
-        <div>Zırh: %<span id="zirh">100</span></div>
-        <div>Lazer: %<span id="lazerSarj">0</span></div>
+        <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 15px; padding-bottom: 5px;">KAPTAN MİKAİL</div>
+        <div><span class="label">SKOR</span> <span id="skor" style="color: #fff;">0</span></div>
+        <div><span class="label">ZIRH</span> <span id="zirh" style="color: #ff4444;">%100</span></div>
+        <div><span class="label">LAZER ŞARJ</span> <span id="lazerSarj" style="color: #00ffff;">%0</span></div>
     </div>
 
     <canvas id="game"></canvas>
@@ -77,7 +94,6 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Hafızadan Skorları Çekme
         let highScore = localStorage.getItem('highScore') || 0;
         let lastScore = localStorage.getItem('lastScore') || 0;
         document.getElementById('highScoreText').innerText = highScore;
@@ -91,9 +107,7 @@
         let mermiler = [];
         let dusmanlar = [];
         let puanlar = [];
-
-        // Giriş Ekranı Animasyon Değişkeni
-        let animStep = 0;
+        let damageFlash = 0;
 
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -115,15 +129,20 @@
                 ctx.beginPath();
                 ctx.moveTo(20, 0); ctx.lineTo(-15, 15); ctx.lineTo(-10, 0); ctx.lineTo(-15, -15);
                 ctx.closePath();
-                ctx.fillStyle = '#00ffcc';
+
+                if (damageFlash > 0) {
+                    ctx.fillStyle = `rgb(${damageFlash * 255}, ${255 - damageFlash * 255}, ${204 - damageFlash * 204})`;
+                } else {
+                    ctx.fillStyle = '#00ffcc';
+                }
+
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1;
                 ctx.stroke();
                 
                 if (gameActive && keys['KeyW']) {
-                    ctx.beginPath();
-                    ctx.moveTo(-12, 0); ctx.lineTo(-25, 0);
+                    ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(-25, 0);
                     ctx.strokeStyle = keys['ShiftLeft'] ? '#0ff' : '#fa0';
                     ctx.stroke();
                 }
@@ -133,32 +152,30 @@
 
         function startNewGame() {
             gameActive = true;
-            skor = 0;
-            zirh = 100;
-            lazerSarj = 0;
-            dusmanlar = [];
-            mermiler = [];
-            puanlar = [];
-            gemi.x = canvas.width / 2;
-            gemi.y = canvas.height / 2;
+            skor = 0; zirh = 100; lazerSarj = 0;
+            dusmanlar = []; mermiler = []; puanlar = [];
+            gemi.x = canvas.width / 2; gemi.y = canvas.height / 2;
             startScreen.style.display = 'none';
             document.getElementById('gameUI').style.display = 'block';
+            updateUI();
         }
 
         function gameOver() {
             gameActive = false;
             lastScore = skor;
             if(skor > highScore) highScore = skor;
-            
-            // Hafızaya Kaydet
             localStorage.setItem('highScore', highScore);
             localStorage.setItem('lastScore', lastScore);
-            
             document.getElementById('highScoreText').innerText = highScore;
             document.getElementById('lastScoreText').innerText = lastScore;
-            
             document.getElementById('gameUI').style.display = 'none';
             startScreen.style.display = 'flex';
+        }
+
+        function updateUI() {
+            document.getElementById('skor').innerText = skor;
+            document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
+            document.getElementById('lazerSarj').innerText = `%${Math.floor(lazerSarj)}`;
         }
 
         startButton.addEventListener('click', startNewGame);
@@ -166,7 +183,8 @@
         function update() {
             if (!gameActive) return;
 
-            // Hareket
+            if (damageFlash > 0) damageFlash -= 0.05;
+
             if (keys['KeyA']) gemi.aci -= gemi.donusHizi;
             if (keys['KeyD']) gemi.aci += gemi.donusHizi;
             
@@ -177,11 +195,9 @@
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
 
-            // Sınırlar
             gemi.x = Math.max(25, Math.min(canvas.width - 25, gemi.x));
             gemi.y = Math.max(25, Math.min(canvas.height - 25, gemi.y));
 
-            // Ateş
             if (keys['Space'] && !gemi.ateslendi) {
                 fire('normal');
                 gemi.ateslendi = true;
@@ -189,9 +205,8 @@
             }
             if (keys['KeyF'] && lazerSarj >= 100) { fire('lazer'); lazerSarj = 0; }
             if (lazerSarj < 100) lazerSarj += 0.2;
-            document.getElementById('lazerSarj').innerText = Math.floor(lazerSarj);
+            updateUI();
 
-            // Düşmanlar, Mermiler ve Mıknatıs Mantığı
             mermiler.forEach((m, mi) => {
                 m.x += m.vx; m.y += m.vy;
                 if(m.x < 0 || m.x > canvas.width || m.y < 0 || m.y > canvas.height) mermiler.splice(mi, 1);
@@ -199,12 +214,12 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                d.x += (gemi.x - d.x) / dist * (1.5 + skor/10000);
-                d.y += (gemi.y - d.y) / dist * (1.5 + skor/10000);
+                d.x += (gemi.x - d.x) / dist * (1.5 + skor/15000);
+                d.y += (gemi.y - d.y) / dist * (1.5 + skor/15000);
 
                 if(dist < 40) {
                     zirh -= 0.5;
-                    document.getElementById('zirh').innerText = Math.floor(zirh);
+                    damageFlash = 1;
                     if(zirh <= 0) gameOver();
                 }
 
@@ -213,19 +228,20 @@
                         puanlar.push({x: d.x, y: d.y});
                         dusmanlar.splice(di, 1);
                         if(m.type !== 'lazer') mermiler.splice(mi, 1);
+                        skor += 10; updateUI();
                     }
                 });
             });
 
             puanlar.forEach((p, pi) => {
                 let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if(d < 300) {
-                    p.x += (gemi.x - p.x) / d * 10;
-                    p.y += (gemi.y - p.y) / d * 10;
+                if(d < 250) {
+                    p.x += (gemi.x - p.x) / d * 4; 
+                    p.y += (gemi.y - p.y) / d * 4;
                 }
                 if(d < 30) {
                     skor += 100;
-                    document.getElementById('skor').innerText = skor;
+                    updateUI();
                     puanlar.splice(pi, 1);
                 }
             });
@@ -240,6 +256,7 @@
             });
         }
 
+        let menuAnimStep = 0;
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -260,24 +277,18 @@
                     ctx.shadowBlur = 0;
                 });
             } else {
-                // Giriş Ekranı Karakter Animasyonu
-                animStep += 0.05;
-                let dynamicScale = 3 + Math.sin(animStep) * 0.3; // 3 kat boyut + pürüzsüz büyüme/küçülme
+                menuAnimStep += 0.04;
+                let dynamicScale = 3 + Math.sin(menuAnimStep) * 0.2;
                 ctx.save();
-                ctx.translate(canvas.width * 0.2, canvas.height * 0.3); // Sol üst-orta kısım
+                ctx.translate(canvas.width * 0.8, canvas.height * 0.3);
                 gemi.x = 0; gemi.y = 0;
-                gemi.aci += 0.01;
+                gemi.aci += 0.005;
                 gemi.draw(dynamicScale);
                 ctx.restore();
             }
         }
 
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
         setInterval(() => { if(gameActive) spawnEnemy(); }, 1200);
         function spawnEnemy() {
             if(dusmanlar.length < 15) {
@@ -286,7 +297,6 @@
                 dusmanlar.push({x, y});
             }
         }
-
         loop();
         window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     </script>
