@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Mikail Starship - Stabil Sürüm</title>
+    <title>Ultimate Starship Defender - Precision Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -80,28 +80,26 @@
             y: canvas.height / 2,
             aci: 0,
             yariCap: 22,
-            normalHiz: 3.5, // Hızlar dengelendi
-            turboHiz: 6.5,  // Hızlar dengelendi
+            normalHiz: 1.8, // %55 yavaşlatıldı (4 -> 1.8)
+            turboHiz: 3.2,  // %55 yavaşlatıldı (7 -> 3.2)
+            donusHizi: 0.045, // %40 yavaşlatıldı (0.075 -> 0.045)
             
             draw(scale = 1) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.scale(scale, scale);
 
-                // 15 Kademe Sıvı Mantığı
                 let kademe = Math.ceil((zirh / 100) * 15);
                 kademe = Math.max(1, Math.min(15, kademe));
                 let hue = (kademe / 15) * 120;
                 let siviRengi = `hsl(${hue}, 100%, 40%)`;
 
-                // Cam Küre
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Sıvı Çizimi
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(0, 0, this.yariCap - 2, 0, Math.PI * 2);
@@ -111,20 +109,18 @@
                 ctx.fillRect(-this.yariCap, dolulukYuksekligi, this.yariCap * 2, this.yariCap * 2);
                 ctx.restore();
 
-                // OK YÖNÜ DÜZELTİLDİ: Uç dışa, sırt içe bakıyor
                 if (gameActive) {
                     ctx.rotate(this.aci);
                     ctx.beginPath();
-                    ctx.moveTo(this.yariCap + 12, 0);   // Sırt tarafı (Küreye en yakın nokta)
-                    ctx.lineTo(this.yariCap + 30, 0);   // Sivri Uç (Gidilen yön)
-                    ctx.moveTo(this.yariCap + 30, 0);   // Sivri uçtan kenarlara kanat atalım
-                    ctx.lineTo(this.yariCap + 20, 8);
-                    ctx.lineTo(this.yariCap + 20, -8);
-                    ctx.lineTo(this.yariCap + 30, 0);
+                    // Ok: Sırt içe, Uç dışa bakar
+                    ctx.moveTo(this.yariCap + 12, 0);   
+                    ctx.lineTo(this.yariCap + 32, 0);   
+                    ctx.lineTo(this.yariCap + 22, 8);
+                    ctx.lineTo(this.yariCap + 22, -8);
+                    ctx.lineTo(this.yariCap + 32, 0);
                     ctx.fillStyle = '#00ffcc';
                     ctx.fill();
                     ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1;
                     ctx.stroke();
                 }
                 ctx.restore();
@@ -143,15 +139,12 @@
         function update() {
             if (!gameActive) return;
 
-            if (keys['KeyA']) gemi.aci -= 0.07;
-            if (keys['KeyD']) gemi.aci += 0.07;
+            if (keys['KeyA']) gemi.aci -= gemi.donusHizi;
+            if (keys['KeyD']) gemi.aci += gemi.donusHizi;
             
             let hiz = 0;
-            if (keys['KeyW']) {
-                hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
-            } else if (keys['KeyS']) {
-                hiz = -3;
-            }
+            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
+            else if (keys['KeyS']) hiz = -1.5;
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
@@ -180,7 +173,7 @@
 
             puanlar.forEach((p, pi) => {
                 let dist = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if (dist < 150) { // Çekim mesafesi daha da yumuşatıldı
+                if (dist < 150) {
                     p.x += (gemi.x - p.x) / dist * 3;
                     p.y += (gemi.y - p.y) / dist * 3;
                 }
@@ -194,11 +187,12 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                d.x += (gemi.x - d.x) / dist * (1.1 + skor/30000); // Düşman hızı yavaşlatıldı
-                d.y += (gemi.y - d.y) / dist * (1.1 + skor/30000);
+                // Düşman Takip Hızı %50 yavaşlatıldı (1.2 -> 0.6)
+                d.x += (gemi.x - d.x) / dist * (0.6 + skor/50000);
+                d.y += (gemi.y - d.y) / dist * (0.6 + skor/50000);
 
                 if(dist < 35) {
-                    zirh -= 0.1; // Hasar miktarı çok azaltıldı
+                    zirh -= 0.1; 
                     if(zirh <= 0) gameOver();
                 }
 
@@ -216,8 +210,8 @@
         function fire(type) {
             mermiler.push({
                 x: gemi.x, y: gemi.y,
-                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 18 : 10),
-                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 18 : 10),
+                vx: Math.cos(gemi.aci) * (type === 'lazer' ? 15 : 8),
+                vy: Math.sin(gemi.aci) * (type === 'lazer' ? 15 : 8),
                 type: type
             });
         }
@@ -278,7 +272,7 @@
         }
 
         startButton.addEventListener('click', startNewGame);
-        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 1800);
+        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 2000);
         function spawnEnemy() { if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
