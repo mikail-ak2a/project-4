@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Balanced Edition</title>
+    <title>Ultimate Starship Defender - Audio & Evolution</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
@@ -72,6 +72,49 @@
         let puanlar = [];
         let saglikCantalar = [];
 
+        // WEB AUDIO API - Silah Sesi Fonksiyonu
+        function playGunSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const primaryGain = audioCtx.createGain();
+            primaryGain.connect(audioCtx.destination);
+
+            const bufferSize = audioCtx.sampleRate * 0.1;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            noiseFilter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.05);
+
+            const noiseEnvelope = audioCtx.createGain();
+            noiseEnvelope.gain.setValueAtTime(1.5, audioCtx.currentTime);
+            noiseEnvelope.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseEnvelope);
+            noiseEnvelope.connect(primaryGain);
+
+            const oscillator = audioCtx.createOscillator();
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.05);
+
+            const oscEnvelope = audioCtx.createGain();
+            oscEnvelope.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            oscEnvelope.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+            oscillator.connect(oscEnvelope);
+            oscEnvelope.connect(primaryGain);
+
+            noise.start(); oscillator.start();
+            noise.stop(audioCtx.currentTime + 0.1); oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
@@ -80,10 +123,9 @@
             y: canvas.height / 2,
             aci: 0,
             yariCap: 22,
-            // Hızlar %38 yavaşlatma noktasına getirildi
-            normalHiz: 1.15,   
-            turboHiz: 2.1,    
-            donusHizi: 0.022, // Beğendiğin dönüş hızı sabit kaldı
+            baseNormalHiz: 1.15,
+            baseTurboHiz: 2.1,
+            donusHizi: 0.022, 
             
             draw(scale = 1) {
                 ctx.save();
@@ -127,24 +169,20 @@
             }
         };
 
-        function spawnSaglik() {
-            if (zirh < 80 && saglikCantalar.length < 2) {
-                saglikCantalar.push({
-                    x: Math.random() * (canvas.width - 100) + 50,
-                    y: Math.random() * (canvas.height - 100) + 50,
-                });
-            }
-        }
-
         function update() {
             if (!gameActive) return;
 
-            if (keys['KeyA']) gemi.aci -= gemi.donusHizi;
+            // DİNAMİK ZORLAŞMA (Dino Modu): Skor arttıkça hızlar küçük oranlarla artar
+            let zorlukCarpan = 1 + (skor / 15000); 
+            let mevcutNormalHiz = gemi.baseNormalHiz * zorlukCarpan;
+            let mevcutTurboHiz = gemi.baseTurboHiz * zorlukCarpan;
+
+            if (keys['KeyA']) gemi.aci -= gemi.donusHizi; // Eksen dönme hızı sabit
             if (keys['KeyD']) gemi.aci += gemi.donusHizi;
             
             let hiz = 0;
-            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? gemi.turboHiz : gemi.normalHiz;
-            else if (keys['KeyS']) hiz = -0.9;
+            if (keys['KeyW']) hiz = keys['ShiftLeft'] ? mevcutTurboHiz : mevcutNormalHiz;
+            else if (keys['KeyS']) hiz = -0.9 * zorlukCarpan;
 
             gemi.x += Math.cos(gemi.aci) * hiz;
             gemi.y += Math.sin(gemi.aci) * hiz;
@@ -187,9 +225,9 @@
 
             dusmanlar.forEach((d, di) => {
                 let dist = Math.hypot(gemi.x - d.x, gemi.y - d.y);
-                // Düşman Hızı: %38 yavaşlatma noktasına göre ayarlandı
-                d.x += (gemi.x - d.x) / dist * (0.42 + skor/100000);
-                d.y += (gemi.y - d.y) / dist * (0.42 + skor/100000);
+                // Düşman hızı da skora göre zorlaşır
+                d.x += (gemi.x - d.x) / dist * (0.42 * zorlukCarpan);
+                d.y += (gemi.y - d.y) / dist * (0.42 * zorlukCarpan);
 
                 if(dist < 35) {
                     zirh -= 0.1; 
@@ -208,6 +246,7 @@
         }
 
         function fire(type) {
+            playGunSound(); // Ateş edildiğinde sesi tetikle
             mermiler.push({
                 x: gemi.x, y: gemi.y,
                 vx: Math.cos(gemi.aci) * (type === 'lazer' ? 10 : 6),
@@ -252,6 +291,9 @@
             }
         }
 
+        function spawnEnemy() { if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
+        function spawnSaglik() { if (zirh < 80 && saglikCantalar.length < 2) saglikCantalar.push({x: Math.random() * (canvas.width - 100) + 50, y: Math.random() * (canvas.height - 100) + 50}); }
+
         function startNewGame() {
             gameActive = true; skor = 0; zirh = 100;
             dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
@@ -272,11 +314,11 @@
         }
 
         startButton.addEventListener('click', startNewGame);
-        // Düşman sıklığı %17 artırıldı (4000ms -> 3300ms)
-        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 3300);
-        function spawnEnemy() { if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50}); }
+        // Düşman sıklığı 3000ms'e çekildi
+        setInterval(() => { if(gameActive) { spawnEnemy(); spawnSaglik(); } }, 3000);
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     </script>
 </body>
 </html>
