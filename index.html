@@ -2,42 +2,47 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Ultimate Starship Defender - Settings & Audio</title>
+    <title>Ultimate Starship Defender - Mikail Edition</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: #00ffcc; }
         canvas { display: block; }
         
-        /* Ekran Tasarımları */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column;
             justify-content: flex-start; align-items: flex-start;
-            padding-left: 10%; padding-top: 10vh; z-index: 10;
+            padding-left: 10%; padding-top: 10vh; z-index: 100;
         }
 
         .btn {
-            padding: 20px 40px; width: 450px; font-size: 28px; background: transparent;
+            padding: 15px 30px; width: 450px; font-size: 24px; background: transparent;
             color: #00ffcc; border: 3px solid #00ffcc; cursor: pointer;
-            transition: 0.3s; margin-bottom: 20px; text-transform: uppercase; font-weight: bold;
+            transition: 0.3s; margin-bottom: 15px; text-transform: uppercase; font-weight: bold;
             text-align: center; font-family: 'Courier New', monospace;
         }
-        .btn:hover { background: #00ffcc; color: #000; box-shadow: 0 0 30px #00ffcc; }
+        .btn:hover { background: #00ffcc; color: #000; box-shadow: 0 0 20px #00ffcc; }
+
+        /* Küçük Butonlar (Skor kutuları boyutunda) */
+        .btn-sm { width: 315px; font-size: 18px; border: 2px solid #00ffcc; }
 
         .score-box {
             padding: 12px 25px; width: 315px; font-size: 18px; color: #fff;
             border: 2px solid rgba(0, 255, 204, 0.5); margin-bottom: 10px;
-            text-align: center; background: rgba(0, 40, 40, 0.3); font-weight: bold;
+            text-align: center; background: rgba(0, 40, 40, 0.3); font-weight: bold; box-sizing: border-box;
         }
 
-        /* Ayar Menüsü Özel Stilleri */
-        #settingsScreen { display: none; align-items: center; padding-left: 0; justify-content: center; }
-        .setting-item { margin: 15px 0; text-align: center; width: 80%; }
-        .setting-item label { font-size: 24px; display: block; margin-bottom: 10px; color: #00ffcc; font-weight: bold; }
-        input[type=range] { width: 400px; cursor: pointer; accent-color: #00ffcc; }
+        #settingsScreen, #pauseScreen { display: none; align-items: center; padding-left: 0; justify-content: center; }
+        .setting-item { margin: 10px 0; text-align: center; }
+        input[type=range] { width: 300px; accent-color: #00ffcc; }
 
         #gameUI {
-            position: absolute; top: 25px; left: 25px; background: rgba(0, 40, 40, 0.85);
-            padding: 20px; border: 2px solid #00ffcc; border-radius: 10px; display: none; pointer-events: none;
+            position: absolute; top: 20px; left: 20px; background: rgba(0, 40, 40, 0.85);
+            padding: 15px; border: 2px solid #00ffcc; border-radius: 8px; display: none;
+        }
+        #pauseBtn {
+            position: absolute; top: 20px; right: 20px; padding: 10px 20px;
+            background: transparent; color: #00ffcc; border: 2px solid #00ffcc;
+            cursor: pointer; font-weight: bold; display: none;
         }
     </style>
 </head>
@@ -47,45 +52,32 @@
         <button class="btn" onclick="startNewGame()">YENİ OYUNA BAŞLA</button>
         <div class="score-box">EN İYİ SKOR: <span id="highScoreText">0</span></div>
         <div class="score-box">EN SON SKOR: <span id="lastScoreText">0</span></div>
-        <button class="btn" onclick="toggleSettings(true)">KONTROL AYARLARI</button>
+        <button class="btn btn-sm" onclick="toggleSettings(true)">KONTROL AYARLARI</button>
+    </div>
+
+    <div id="pauseScreen" class="screen">
+        <h1 style="color:#00ffcc">OYUN DURDURULDU</h1>
+        <button class="btn" onclick="resumeGame()">DEVAM ET</button>
+        <button class="btn" onclick="toggleSettings(true, true)">AYARLAR</button>
+        <button class="btn" onclick="goToMainMenu()">ANA MENÜ</button>
     </div>
 
     <div id="settingsScreen" class="screen">
-        <h1 style="font-size: 40px; color: #00ffcc; text-shadow: 0 0 15px #00ffcc;">KONTROL PANELİ</h1>
-        
-        <div class="setting-item">
-            <label>EKSEN HASSASİYETİ: <span id="val_donus">0.022</span></label>
-            <input type="range" id="inp_donus" min="0.01" max="0.08" step="0.001" value="0.022">
-        </div>
-        
-        <div class="setting-item">
-            <label>GEMİ HIZI: <span id="val_hiz">1.15</span></label>
-            <input type="range" id="inp_hiz" min="0.5" max="3.0" step="0.1" value="1.15">
-        </div>
-
-        <div class="setting-item">
-            <label>DÜŞMAN SIKLIĞI (Saniye): <span id="val_siklik">3.0</span></label>
-            <input type="range" id="inp_siklik" min="1.0" max="6.0" step="0.5" value="3.0">
-        </div>
-
-        <div class="setting-item">
-            <label>DÜŞMAN HIZI: <span id="val_dusmanHiz">0.42</span></label>
-            <input type="range" id="inp_dusmanHiz" min="0.1" max="1.5" step="0.05" value="0.42">
-        </div>
-
-        <div class="setting-item">
-            <label>SES SEVİYESİ: <span id="val_ses">50</span>%</label>
-            <input type="range" id="inp_ses" min="0" max="100" step="1" value="50">
-        </div>
-
-        <button class="btn" style="width: 250px; margin-top: 30px;" onclick="toggleSettings(false)">KAYDET VE ÇIK</button>
+        <h2 style="color:#00ffcc">KONTROL PANELİ</h2>
+        <div class="setting-item"><label>EKSEN HASSASİYETİ: <span id="val_donus">0.022</span></label><br><input type="range" id="inp_donus" min="0.01" max="0.08" step="0.001" value="0.022"></div>
+        <div class="setting-item"><label>GEMİ HIZI: <span id="val_hiz">1.15</span></label><br><input type="range" id="inp_hiz" min="0.5" max="3.0" step="0.1" value="1.15"></div>
+        <div class="setting-item"><label>DÜŞMAN SIKLIĞI: <span id="val_siklik">3.0</span></label><br><input type="range" id="inp_siklik" min="1.0" max="6.0" step="0.5" value="3.0"></div>
+        <div class="setting-item"><label>DÜŞMAN HIZI: <span id="val_dusmanHiz">0.42</span></label><br><input type="range" id="inp_dusmanHiz" min="0.1" max="1.5" step="0.05" value="0.42"></div>
+        <div class="setting-item"><label>SES SEVİYESİ: <span id="val_ses">50</span>%</label><br><input type="range" id="inp_ses" min="0" max="100" step="1" value="50"></div>
+        <button class="btn btn-sm" onclick="closeSettings()">KAYDET VE DÖN</button>
     </div>
 
+    <button id="pauseBtn" onclick="togglePause()">DURDUR (ESC)</button>
+
     <div id="gameUI">
-        <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 10px;">KOMUTA PANELİ</div>
+        <div style="color: #00ffcc; border-bottom: 1px solid #00ffcc; margin-bottom: 5px;">KAPTAN MİKAİL</div>
         <div>SKOR: <span id="skor" style="color: #fff;">0</span></div>
-        <div>SIVI: <span id="zirh" style="color: #0f0;">%100</span></div>
-        <div>LAZER: <span id="lazerSarj" style="color: #0ff;">%0</span></div>
+        <div>CAN SEVİYESİ: <span id="zirh" style="color: #0f0;">%100</span></div>
     </div>
 
     <canvas id="game"></canvas>
@@ -96,134 +88,76 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // --- AYARLAR VE DEĞİŞKENLER ---
-        let gameActive = false;
-        let skor = 0, zirh = 100, lazerSarj = 0;
+        let gameActive = false, isPaused = false, skor = 0, zirh = 100;
+        let settingsFromPause = false;
         const keys = {};
-        let mermiler = [], dusmanlar = [], puanlar = [], saglikCantalar = [];
-        let enemyInterval;
+        let mermiler = [], dusmanlar = [], puanlar = [], saglikCantalar = [], enemyInterval;
 
-        // Kullanıcı Ayarları (Varsayılan veya LocalStorage)
         let settings = JSON.parse(localStorage.getItem('userSettings')) || {
-            donus: 0.022,
-            hiz: 1.15,
-            siklik: 3.0,
-            dusmanHiz: 0.42,
-            ses: 0.5
+            donus: 0.022, hiz: 1.15, siklik: 3.0, dusmanHiz: 0.42, ses: 0.5
         };
 
-        function updateSettingsUI() {
-            document.getElementById('inp_donus').value = settings.donus;
-            document.getElementById('inp_hiz').value = settings.hiz;
-            document.getElementById('inp_siklik').value = settings.siklik;
-            document.getElementById('inp_dusmanHiz').value = settings.dusmanHiz;
-            document.getElementById('inp_ses').value = settings.ses * 100;
-            
-            document.getElementById('val_donus').innerText = settings.donus;
-            document.getElementById('val_hiz').innerText = settings.hiz;
-            document.getElementById('val_siklik').innerText = settings.siklik;
-            document.getElementById('val_dusmanHiz').innerText = settings.dusmanHiz;
-            document.getElementById('val_ses').innerText = Math.round(settings.ses * 100);
-        }
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Input Dinleyicileri
-        ['donus', 'hiz', 'siklik', 'dusmanHiz', 'ses'].forEach(id => {
-            document.getElementById('inp_' + id).addEventListener('input', (e) => {
-                let val = parseFloat(e.target.value);
-                if(id === 'ses') settings[id] = val / 100;
-                else settings[id] = val;
-                updateSettingsUI();
-                localStorage.setItem('userSettings', JSON.stringify(settings));
-            });
-        });
-
-        // --- SES SİSTEMİ ---
-        function playGunSound() {
+        function playSound(freq, type, decay) {
             if(settings.ses === 0) return;
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + decay);
             gain.gain.setValueAtTime(settings.ses, audioCtx.currentTime);
             gain.connect(audioCtx.destination);
-
-            const oscillator = audioCtx.createOscillator();
-            oscillator.type = 'triangle';
-            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            
-            oscillator.connect(gain);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            osc.start(); osc.stop(audioCtx.currentTime + decay);
         }
 
-        // --- OYUN MANTİĞİ ---
         const gemi = {
             x: canvas.width / 2, y: canvas.height / 2, aci: 0,
-            draw(scale = 1) {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.scale(scale, scale);
-                
-                // Küre ve Sıvı
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
                 ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2);
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                
-                let kademe = Math.ceil((zirh / 100) * 15);
-                ctx.save();
-                ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.clip();
-                ctx.fillStyle = `hsl(${(kademe/15)*120}, 100%, 40%)`;
-                ctx.fillRect(-22, 22 - ((kademe/15)*44), 44, 44);
-                ctx.restore();
-
+                let k = Math.ceil((zirh / 100) * 15);
+                ctx.save(); ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.clip();
+                ctx.fillStyle = `hsl(${(k/15)*120}, 100%, 40%)`;
+                ctx.fillRect(-22, 22 - ((k/15)*44), 44, 44); ctx.restore();
                 if (gameActive) {
                     ctx.rotate(this.aci);
-                    ctx.beginPath();
-                    ctx.moveTo(34, 0); ctx.lineTo(54, 0); ctx.lineTo(44, 8); ctx.lineTo(44, -8); ctx.lineTo(54, 0);
+                    ctx.beginPath(); ctx.moveTo(34, 0); ctx.lineTo(54, 0); ctx.lineTo(44, 8); ctx.lineTo(44, -8); ctx.lineTo(54, 0);
                     ctx.fillStyle = '#00ffcc'; ctx.fill();
                 }
                 ctx.restore();
             }
         };
 
-        function startNewGame() {
-            gameActive = true; skor = 0; zirh = 100;
-            dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('gameUI').style.display = 'block';
-            
-            if(enemyInterval) clearInterval(enemyInterval);
-            enemyInterval = setInterval(() => {
-                if(gameActive) {
-                    if(dusmanlar.length < 12) dusmanlar.push({x: Math.random()*canvas.width, y: -50});
-                    if(zirh < 80 && saglikCantalar.length < 2) saglikCantalar.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
-                }
-            }, settings.siklik * 1000);
-        }
-
-        function toggleSettings(show) {
-            document.getElementById('startScreen').style.display = show ? 'none' : 'flex';
-            document.getElementById('settingsScreen').style.display = show ? 'flex' : 'none';
-            if(!show) updateScoreDisplay();
+        function spawnEnemy() {
+            if(!gameActive || isPaused) return;
+            const side = Math.floor(Math.random() * 4); // 0:üst, 1:sağ, 2:alt, 3:sol
+            let x, y;
+            if(side === 0) { x = Math.random()*canvas.width; y = -50; }
+            else if(side === 1) { x = canvas.width+50; y = Math.random()*canvas.height; }
+            else if(side === 2) { x = Math.random()*canvas.width; y = canvas.height+50; }
+            else { x = -50; y = Math.random()*canvas.height; }
+            dusmanlar.push({x, y});
         }
 
         function update() {
-            if (!gameActive) return;
+            if (!gameActive || isPaused) return;
             let zorluk = 1 + (skor / 20000);
-            
             if (keys['KeyA']) gemi.aci -= settings.donus;
             if (keys['KeyD']) gemi.aci += settings.donus;
-            
             let v = 0;
-            if (keys['KeyW']) v = keys['ShiftLeft'] ? settings.hiz * 1.8 : settings.hiz;
+            if (keys['KeyW']) v = keys['ShiftLeft'] ? settings.hiz * 1.8 * zorluk : settings.hiz * zorluk;
             else if (keys['KeyS']) v = -settings.hiz * 0.8;
-
-            gemi.x += Math.cos(gemi.aci) * v;
-            gemi.y += Math.sin(gemi.aci) * v;
+            gemi.x += Math.cos(gemi.aci) * v; gemi.y += Math.sin(gemi.aci) * v;
             gemi.x = Math.max(30, Math.min(canvas.width - 30, gemi.x));
             gemi.y = Math.max(30, Math.min(canvas.height - 30, gemi.y));
 
             if (keys['Space'] && !gemi.fireLock) {
-                playGunSound();
-                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*8, vy: Math.sin(gemi.aci)*8});
+                playSound(150, 'triangle', 0.1); // Ateş sesi
+                mermiler.push({x: gemi.x, y: gemi.y, vx: Math.cos(gemi.aci)*10, vy: Math.sin(gemi.aci)*10});
                 gemi.fireLock = true; setTimeout(() => gemi.fireLock = false, 250);
             }
 
@@ -232,9 +166,9 @@
                 d.x += (gemi.x - d.x)/dist * (settings.dusmanHiz * zorluk);
                 d.y += (gemi.y - d.y)/dist * (settings.dusmanHiz * zorluk);
                 if(dist < 35) { zirh -= 0.15; if(zirh <= 0) gameOver(); }
-                
                 mermiler.forEach((m, mi) => {
                     if(Math.hypot(m.x - d.x, m.y - d.y) < 25) {
+                        playSound(1200, 'sine', 0.05); // Çın sesi
                         puanlar.push({x: d.x, y: d.y});
                         dusmanlar.splice(i, 1); mermiler.splice(mi, 1); skor += 10;
                     }
@@ -243,31 +177,20 @@
 
             puanlar.forEach((p, i) => {
                 let d = Math.hypot(gemi.x - p.x, gemi.y - p.y);
-                if(d < 150) { p.x += (gemi.x-p.x)/d*3; p.y += (gemi.y-p.y)/d*3; }
+                if(d < 150) { p.x += (gemi.x-p.x)/d*4; p.y += (gemi.y-p.y)/d*4; }
                 if(d < 30) { skor += 100; puanlar.splice(i, 1); }
             });
 
+            saglikCantalar.forEach((s, i) => {
+                if(Math.hypot(gemi.x - s.x, gemi.y - s.y) < 40) {
+                    zirh = Math.min(100, zirh + 30); // %80 sınırı kaldırıldı
+                    saglikCantalar.splice(i, 1);
+                }
+            });
+
             mermiler.forEach((m, i) => { m.x += m.vx; m.y += m.vy; if(m.x<0||m.x>canvas.width||m.y<0||m.y>canvas.height) mermiler.splice(i, 1); });
-            
             document.getElementById('skor').innerText = skor;
             document.getElementById('zirh').innerText = `%${Math.floor(zirh)}`;
-        }
-
-        function gameOver() {
-            gameActive = false;
-            clearInterval(enemyInterval);
-            lastScore = skor;
-            if(skor > highScore) highScore = skor;
-            localStorage.setItem('highScore', highScore);
-            localStorage.setItem('lastScore', lastScore);
-            updateScoreDisplay();
-            document.getElementById('startScreen').style.display = 'flex';
-            document.getElementById('gameUI').style.display = 'none';
-        }
-
-        function updateScoreDisplay() {
-            document.getElementById('highScoreText').innerText = localStorage.getItem('highScore') || 0;
-            document.getElementById('lastScoreText').innerText = localStorage.getItem('lastScore') || 0;
         }
 
         function draw() {
@@ -279,15 +202,75 @@
                 puanlar.forEach(p => { ctx.fillStyle='#0f0'; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill(); });
                 saglikCantalar.forEach(s => { ctx.fillStyle='#fff'; ctx.fillRect(s.x-10,s.y-10,20,20); ctx.fillStyle='#f00'; ctx.fillRect(s.x-8,s.y-2,16,4); ctx.fillRect(s.x-2,s.y-8,4,16); });
             } else {
-                ctx.save(); ctx.translate(canvas.width*0.8, canvas.height*0.3); gemi.draw(3 + Math.sin(Date.now()*0.005)*0.2); ctx.restore();
+                ctx.save(); ctx.translate(canvas.width*0.8, canvas.height*0.3); gemi.draw(); ctx.restore();
             }
         }
 
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        function togglePause() {
+            if(!gameActive) return;
+            isPaused = !isPaused;
+            document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none';
+        }
+
+        function resumeGame() { isPaused = false; document.getElementById('pauseScreen').style.display = 'none'; }
+        function goToMainMenu() { location.reload(); }
+
+        function startNewGame() {
+            gameActive = true; isPaused = false; skor = 0; zirh = 100;
+            dusmanlar = []; mermiler = []; puanlar = []; saglikCantalar = [];
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('pauseBtn').style.display = 'block';
+            if(enemyInterval) clearInterval(enemyInterval);
+            enemyInterval = setInterval(() => {
+                if(gameActive && !isPaused) {
+                    spawnEnemy();
+                    if(zirh < 70 && saglikCantalar.length < 2) saglikCantalar.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
+                }
+            }, settings.siklik * 1000);
+        }
+
+        function toggleSettings(show, fromPause = false) {
+            settingsFromPause = fromPause;
+            document.getElementById(fromPause ? 'pauseScreen' : 'startScreen').style.display = show ? 'none' : 'flex';
+            document.getElementById('settingsScreen').style.display = show ? 'flex' : 'none';
+        }
+        function closeSettings() { toggleSettings(false, settingsFromPause); updateScoreDisplay(); }
+
+        function gameOver() {
+            gameActive = false; clearInterval(enemyInterval);
+            if(skor > (localStorage.getItem('highScore')||0)) localStorage.setItem('highScore', skor);
+            localStorage.setItem('lastScore', skor);
+            goToMainMenu();
+        }
+
+        function updateSettingsUI() {
+            ['donus', 'hiz', 'siklik', 'dusmanHiz', 'ses'].forEach(id => {
+                let inp = document.getElementById('inp_'+id);
+                let valDisp = document.getElementById('val_'+id);
+                inp.value = id === 'ses' ? settings[id]*100 : settings[id];
+                valDisp.innerText = id === 'ses' ? Math.round(settings[id]*100) : settings[id];
+                inp.oninput = (e) => {
+                    let v = parseFloat(e.target.value);
+                    settings[id] = id === 'ses' ? v/100 : v;
+                    valDisp.innerText = v;
+                    localStorage.setItem('userSettings', JSON.stringify(settings));
+                };
+            });
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('highScoreText').innerText = localStorage.getItem('highScore') || 0;
+            document.getElementById('lastScoreText').innerText = localStorage.getItem('lastScore') || 0;
+        }
+
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if(e.code === 'Escape') togglePause();
+        });
         window.addEventListener('keyup', e => keys[e.code] = false);
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         updateSettingsUI(); updateScoreDisplay(); loop();
-        window.onresize = () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; };
     </script>
 </body>
 </html>
